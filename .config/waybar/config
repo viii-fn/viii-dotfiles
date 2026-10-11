@@ -1,0 +1,91 @@
+{
+    "layer": "top",
+    "position": "top",
+    "height": 36,            // 41 was the minimum your modules needed, so 38 got bumped up
+    "width": 820,            // pixels. Waybar has no percent, so 820 is about 60% of a 1366px screen
+    "margin-top": 6,
+    "spacing": 0,
+
+    "modules-left": ["network", "battery", "clock"],
+    "modules-center": ["custom/media-prev", "custom/media-play", "custom/media-next", "custom/media-title"],
+    "modules-right": ["wlr/taskbar"],
+
+    "network": {
+        "format-wifi": "\uf1eb",                  // wifi icon only, hover for details
+        "format-ethernet": "\uf0e8",
+        "format-disconnected": "\uf071",
+        "tooltip-format-wifi": "{essid}  {signalStrength}%",
+        "tooltip-format-ethernet": "{ifname}",
+        "on-click": "nm-connection-editor"
+    },
+
+    "battery": {
+        "states": { "warning": 30, "critical": 15 },
+        "format": "{icon}  {capacity}%",
+        "format-charging": "\uf0e7  {capacity}%",
+        "format-plugged": "\uf1e6  {capacity}%",
+        "format-icons": ["\uf244", "\uf243", "\uf242", "\uf241", "\uf240"]
+    },
+
+    "clock": {
+        "format": "\uf017  {:%H:%M}",
+        "format-alt": "\uf073  {:%a, %b %d}",
+        "tooltip-format": "<tt><small>{calendar}</small></tt>"
+    },
+
+    "custom/media-prev": {
+        "format": "\uf048",
+        "tooltip": false,
+        "on-click": "playerctl previous"
+    },
+
+    // The big play/pause button. It checks playerctl every second and swaps the icon.
+    // If nothing is running it prints "Stopped", so the button stays visible.
+    "custom/media-play": {
+        "exec": "echo '{\"alt\":\"'\"$(playerctl status 2>/dev/null || echo Stopped)\"'\"}'",
+        "return-type": "json",
+        "interval": 1,
+        "format": "{icon}",
+        "format-icons": {
+            "Playing": "\uf04c",   // pause icon while playing
+            "Paused": "\uf04b",    // play icon
+            "Stopped": "\uf04b"
+        },
+        "tooltip": false,
+        "on-click": "playerctl play-pause"
+    },
+    
+    // Shows "Artist - Title", or the fallback text if nothing is playing.
+    // The sed removes a leading " - " when a track has no artist tag.
+    "custom/media-title": {
+        "exec": "t=$(playerctl metadata --format '{{title}}' 2>/dev/null | sed 's/^ - //'); [ -n \"$t\" ] && echo \"$t\" || echo \"it's quiet here\"",
+        "interval": 2,
+        "format": "{}",
+        "escape": true,          // stops titles containing & from breaking the bar
+        "max-length": 26,
+        "tooltip": false
+    },
+
+    "custom/media-next": {
+        "format": "\uf051",
+        "tooltip": false,
+        "on-click": "playerctl next"
+    },
+
+    "mpris#title": {
+        "format": "{artist} - {title}",
+        "format-paused": "{artist} - {title}",
+        "format-stopped": "",
+        "max-length": 18,
+        "ellipsis": "…",
+        "tooltip-format": "{player}: {album}"
+    },
+
+    "wlr/taskbar": {
+        "format": "{icon}",
+        "icon-size": 18,
+        "tooltip-format": "{title}",
+        "on-click": "activate",
+        "on-click-middle": "close"
+    }
+}

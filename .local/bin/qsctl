@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# File: ~/.local/bin/qsctl
+# Sends an IPC call to the running shell. Usage: qsctl music toggle
+exec qs -p "$HOME/viii-shell-2/shell" ipc call "$@"

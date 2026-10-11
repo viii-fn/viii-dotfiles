@@ -1,0 +1,6 @@
+#!/bin/sh
+
+XKB_DEFAULT_LAYOUT=gb
+# Background services
+# File: ~/.config/labwc/autostart
+"/home/viii_fn/.local/bin/viii-theme" --restore >/dev/null 2>&1 &

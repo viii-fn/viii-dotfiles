@@ -1,0 +1,13 @@
+#!/bin/sh
+# Modes:  (none) = all displays in one image
+#         output = click on one display to capture just that one
+#         region = drag to select an area
+dir="$HOME/Pictures/Screenshots"
+mkdir -p "$dir"
+f="$dir/$(date +%Y-%m-%d_%H-%M-%S).png"
+
+case "$1" in
+    output) grim -o "$(slurp -o -f '%o')" "$f" ;;
+    region) grim -g "$(slurp)" "$f" ;;
+    *)      grim "$f" ;;
+esac && wl-copy < "$f"

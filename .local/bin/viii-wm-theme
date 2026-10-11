@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# viii-wm-theme: regenerate the labwc theme from a theme's palette.json
+# usage: viii-wm-theme atmos     (or a path to any palette.json)
+set -euo pipefail
+
+THEMES="$HOME/viii-shell-2/themes"
+OUT="$HOME/.config/labwc/themerc-override"
+BORDER_WIDTH=1   # set to 0 for no window border
+
+name="${1:?usage: viii-wm-theme <theme-name | path/to/palette.json>}"
+if [ -f "$name" ]; then pal="$name"; else pal="$THEMES/$name/palette.json"; fi
+[ -f "$pal" ] || { echo "no palette: $pal" >&2; exit 1; }
+
+# read one "key": "#rrggbb" value out of the flat JSON, no jq needed
+get() { sed -n "s/.*\"$1\": *\"\(#[0-9a-fA-F]\{6,8\}\)\".*/\1/p" "$pal" | head -n1; }
+need() {
+  local v; v="$(get "$1")"
+  [ -n "$v" ] || { echo "palette missing '$1' in $pal" >&2; exit 1; }
+  printf '%s' "$v"
+}
+
+BG=$(need bg);           SURFACE=$(need surface);   SURFACE_HI=$(need surfaceHi)
+LINE=$(need line);       FG=$(need fg);             FG_DIM=$(need fgDim)
+ACCENT=$(need accent);   ACCENT_HI=$(need accentHi)
+WM_ACTIVE=$(need wmActive); WM_INACTIVE=$(need wmInactive)
+
+tmp="$(mktemp)"
+cat > "$tmp" <<EOF
+### WINDOW
+border.width: $BORDER_WIDTH
+window.client.padding.width: 0
+window.client.padding.height: 0
+window.handle.width: 0
+padding.width: 4
+padding.height: 4
+
+window.active.border.color: $WM_ACTIVE
+window.inactive.border.color: $WM_INACTIVE
+window.active.title.separator.color: $SURFACE
+window.inactive.title.separator.color: $BG
+window.active.client.color: $SURFACE
+window.inactive.client.color: $BG
+window.active.label.text.color: $FG
+window.inactive.label.text.color: $FG_DIM
+
+window.active.title.bg: flat solid
+window.active.title.bg.color: $SURFACE
+window.active.label.bg: flat solid
+window.active.label.bg.color: $SURFACE
+window.inactive.title.bg: flat solid
+window.inactive.title.bg.color: $BG
+window.inactive.label.bg: flat solid
+window.inactive.label.bg.color: $BG
+
+window.active.button.unpressed.bg: parentrelative
+window.active.button.pressed.bg: parentrelative
+window.active.button.hover.bg: parentrelative
+window.active.button.disabled.bg: parentrelative
+window.active.button.toggled.unpressed.bg: parentrelative
+window.active.button.toggled.pressed.bg: parentrelative
+window.active.button.toggled.hover.bg: parentrelative
+window.inactive.button.unpressed.bg: parentrelative
+window.inactive.button.pressed.bg: parentrelative
+window.inactive.button.hover.bg: parentrelative
+window.inactive.button.disabled.bg: parentrelative
+window.inactive.button.toggled.unpressed.bg: parentrelative
+window.inactive.button.toggled.pressed.bg: parentrelative
+window.inactive.button.toggled.hover.bg: parentrelative
+window.label.text.justify: center
+
+### MENU
+menu.border.width: 6
+menu.separator.width: 2
+menu.separator.padding.width: 10
+menu.separator.padding.height: 2
+menu.overlap.x: 0
+menu.overlap.y: 0
+menu.border.color: $BG
+menu.separator.color: $LINE
+menu.title.text.color: $FG
+menu.items.text.color: $FG
+menu.items.disabled.text.color: $FG_DIM
+menu.items.active.text.color: $ACCENT_HI
+menu.items.active.disabled.text.color: $FG_DIM
+menu.items.bg: flat solid
+menu.items.bg.color: $SURFACE
+menu.items.active.bg: flat solid
+menu.items.active.bg.color: $SURFACE_HI
+menu.title.bg: flat solid
+menu.title.bg.color: $BG
+menu.title.text.justify: center
+
+### OSD
+osd.border.width: 1
+osd.border.color: $LINE
+osd.label.text.color: $FG
+osd.bg: flat solid
+osd.bg.color: $SURFACE
+osd.label.bg: flat solid
+osd.label.bg.color: $SURFACE
+osd.hilight.bg: flat solid
+osd.hilight.bg.color: $ACCENT
+osd.unhilight.bg: flat solid
+osd.unhilight.bg.color: $LINE
+
+### BUTTONS (monochrome)
+window.active.button.disabled.image.color: $LINE
+window.active.button.hover.image.color: $ACCENT_HI
+window.active.button.toggled.image.color: $ACCENT_HI
+window.inactive.button.disabled.image.color: $LINE
+window.inactive.button.hover.image.color: $FG
+window.inactive.button.toggled.image.color: $FG_DIM
+EOF
+
+for b in iconify max close shade desk; do
+  cat >> "$tmp" <<EOF
+window.active.button.$b.unpressed.image.color: $ACCENT
+window.active.button.$b.pressed.image.color: $ACCENT_HI
+window.inactive.button.$b.unpressed.image.color: $FG_DIM
+window.inactive.button.$b.pressed.image.color: $FG
+EOF
+done
+
+mv "$tmp" "$OUT"
+pgrep -x labwc >/dev/null && labwc --reconfigure || true
+"$HOME/.local/bin/viii-app-theme" "$pal"
+echo "labwc theme set from: $pal"

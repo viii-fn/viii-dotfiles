@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# viii-app-theme: colour kitty and zathura from a theme's palette.json
+# normally called by viii-wm-theme; can also be run by hand
+set -euo pipefail
+
+THEMES="$HOME/viii-shell-2/themes"
+KITTY_CFG="$HOME/.config/kitty/kitty.conf"
+KITTY_OUT="$HOME/.config/kitty/colors.conf"
+ZATH_CFG="$HOME/.config/zathura/zathurarc"
+ZATH_OUT="$HOME/.config/zathura/colors"
+ZATH_ALPHA=0.85   # zathura background opacity (1.0 = solid)
+KITTY_ALPHA=0.85   # kitty background opacity (1.0 = solid)
+
+name="${1:?usage: viii-app-theme <theme-name | path/to/palette.json>}"
+if [ -f "$name" ]; then pal="$name"; else pal="$THEMES/$name/palette.json"; fi
+[ -f "$pal" ] || { echo "no palette: $pal" >&2; exit 1; }
+
+get() { sed -n "s/.*\"$1\": *\"\(#[0-9a-fA-F]\{6,8\}\)\".*/\1/p" "$pal" | head -n1; }
+need() {
+  local v; v="$(get "$1")"
+  [ -n "$v" ] || { echo "palette missing '$1' in $pal" >&2; exit 1; }
+  printf '%s' "$v"
+}
+rgba() { printf 'rgba(%d,%d,%d,%s)' "0x${1:1:2}" "0x${1:3:2}" "0x${1:5:2}" "$2"; }
+
+BG=$(need bg);           SURFACE=$(need surface);   SURFACE_HI=$(need surfaceHi)
+LINE=$(need line);       FG=$(need fg);             FG_DIM=$(need fgDim)
+ACCENT=$(need accent);   ACCENT_HI=$(need accentHi); ON_ACCENT=$(need onAccent)
+GOOD=$(need good);       BAD=$(need bad)
+
+# the chart array gives us the extra ANSI colours
+mapfile -t CH < <(tr -d '\n' < "$pal" | grep -o '"chart": *\[[^]]*\]' | grep -o '#[0-9a-fA-F]\{6\}')
+[ "${#CH[@]}" -ge 8 ] || { echo "palette 'chart' needs 8 colours in $pal" >&2; exit 1; }
+
+ALPHA="$(sed -n 's/.*"bgAlpha": *\([0-9.]\+\).*/\1/p' "$pal" | head -n1)"
+ALPHA="${ALPHA:-1.0}"
+
+mkdir -p "$(dirname "$KITTY_OUT")" "$(dirname "$ZATH_OUT")"
+
+# ---------- kitty ----------
+tmp="$(mktemp)"
+cat > "$tmp" <<EOF
+foreground $FG
+background $BG
+background_opacity $KITTY_ALPHA
+selection_foreground $FG
+selection_background $SURFACE_HI
+cursor $ACCENT
+cursor_text_color $ON_ACCENT
+url_color $ACCENT_HI
+
+active_border_color $ACCENT
+inactive_border_color $LINE
+bell_border_color $ACCENT_HI
+
+tab_bar_background $BG
+active_tab_foreground $ON_ACCENT
+active_tab_background $ACCENT
+inactive_tab_foreground $FG_DIM
+inactive_tab_background $SURFACE
+
+color0 $SURFACE_HI
+color1 $BAD
+color2 $GOOD
+color3 ${CH[2]}
+color4 $ACCENT
+color5 ${CH[4]}
+color6 ${CH[1]}
+color7 $FG
+color8 $FG_DIM
+color9 $BAD
+color10 $GOOD
+color11 ${CH[2]}
+color12 $ACCENT_HI
+color13 ${CH[4]}
+color14 ${CH[1]}
+color15 $FG
+EOF
+mv "$tmp" "$KITTY_OUT"
+
+# make sure kitty.conf includes the generated file
+if [ -f "$KITTY_CFG" ]; then
+  grep -q 'colors.conf' "$KITTY_CFG" || sed -i '1i include colors.conf' "$KITTY_CFG"
+else
+  printf 'include colors.conf\n' > "$KITTY_CFG"
+fi
+
+# reload every running kitty so open windows change colour too
+pkill -USR1 -x kitty || true
+
+# ---------- zathura ----------
+tmp="$(mktemp)"
+cat > "$tmp" <<EOF
+set default-bg "$(rgba "$BG" "$ZATH_ALPHA")"
+set default-fg "$FG"
+set statusbar-bg "$SURFACE"
+set statusbar-fg "$FG"
+set inputbar-bg "$SURFACE"
+set inputbar-fg "$FG"
+set notification-bg "$SURFACE"
+set notification-fg "$FG"
+set notification-error-bg "$BAD"
+set notification-error-fg "$BG"
+set notification-warning-bg "${CH[2]}"
+set notification-warning-fg "$BG"
+set completion-bg "$SURFACE"
+set completion-fg "$FG_DIM"
+set completion-group-bg "$SURFACE_HI"
+set completion-group-fg "$FG"
+set completion-highlight-bg "$ACCENT"
+set completion-highlight-fg "$ON_ACCENT"
+set index-bg "$BG"
+set index-fg "$FG"
+set index-active-bg "$ACCENT"
+set index-active-fg "$ON_ACCENT"
+set highlight-color "$(rgba "$ACCENT_HI" 0.4)"
+set highlight-active-color "$(rgba "$ACCENT" 0.6)"
+set recolor true
+set recolor-keephue true
+set recolor-lightcolor "$(rgba "$BG" "$ZATH_ALPHA")"
+set recolor-darkcolor "$FG"
+EOF
+mv "$tmp" "$ZATH_OUT"
+
+if [ -f "$ZATH_CFG" ]; then
+  grep -q "include $ZATH_OUT" "$ZATH_CFG" || printf 'include %s\n' "$ZATH_OUT" >> "$ZATH_CFG"
+else
+  printf 'include %s\n' "$ZATH_OUT" > "$ZATH_CFG"
+fi
+
+echo "kitty + zathura themed from: $pal"

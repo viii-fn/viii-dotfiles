@@ -1,0 +1,29 @@
+# Font (use a name from: fc-list | grep -i nerd)
+font=JetBrainsMono Nerd Font 10
+
+# Colors: background, text, border (last two hex digits = alpha)
+background-color=#14100dee
+text-color=#ebdbb2
+border-color=#3a2f26
+progress-color=over #504035
+
+# Shape and spacing
+width=340
+height=120
+margin=12
+padding=14
+border-size=2
+border-radius=12
+
+# Position and behavior
+anchor=top-right
+default-timeout=6000
+max-visible=4
+icons=1
+max-icon-size=48
+layer=overlay
+
+# Urgent notifications get a red accent and never time out
+[urgency=high]
+border-color=#cc241d
+default-timeout=0

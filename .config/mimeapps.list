@@ -1,0 +1,11 @@
+[Default Applications]
+image/x-xbitmap=micro.desktop
+image/png=swayimg.desktop
+video/matroska=vlc.desktop
+
+[Added Associations]
+image/x-xbitmap=micro.desktop;
+image/png=swayimg.desktop;
+video/matroska=vlc.desktop;
+image/jpeg=swayimg.desktop;
+image/webp=swayimg.desktop;

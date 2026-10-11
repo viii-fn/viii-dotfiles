@@ -1,0 +1,25 @@
+add_newline = true
+
+format = """
+[╭─](bold #bdb76b)$username$directory$git_branch$git_status$cmd_duration
+[╰─](bold #bdb76b)$character"""
+
+[character]
+success_symbol = "[❯](bold #9acd32)"
+error_symbol = "[❯](bold #cd5c5c)"
+
+[directory]
+style = "bold #87ceeb"
+truncation_length = 3
+
+[git_branch]
+symbol = " "
+style = "bold #cd96cd"
+format = "on [$symbol$branch]($style) "
+
+[git_status]
+style = "#f0e68c"
+
+[cmd_duration]
+min_time = 2000
+style = "#ffdead"

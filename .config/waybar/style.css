@@ -1,0 +1,65 @@
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    min-height: 0;
+}
+
+/* The whole bar is one rounded pill */
+window#waybar {
+    background-color: rgba(18, 18, 18, 0.92);
+    border: 1px solid #262626;
+    border-radius: 26px;
+    color: #e5e5e5;
+}
+
+tooltip {
+    background: #0d0d0d;
+    border: 1px solid #262626;
+    border-radius: 12px;
+}
+tooltip label { color: #e5e5e5; padding: 6px 10px; }
+
+/* Left: wifi, battery, clock */
+#network, #battery, #clock {
+    padding: 0 12px;
+    color: #e5e5e5;
+}
+#battery.charging { color: #98fb98; }
+#battery.warning  { color: #f4a460; }
+#battery.critical { color: #cd5c5c; }
+
+/* Center: prev, play, next, title. All the same style now */
+#custom-media-prev,
+#custom-media-play,
+#custom-media-next {
+    font-size: 15px;
+    padding: 0 10px;
+    color: #a3a3a3;
+    background-color: transparent;
+    transition: all 0.2s ease;
+}
+#custom-media-prev:hover,
+#custom-media-play:hover,
+#custom-media-next:hover { color: #ffffff; }
+
+#custom-media-title {
+    padding: 0 10px 0 6px;
+    color: #e5e5e5;
+}
+
+/* Right: window icons */
+#taskbar { padding: 0 6px; }
+#taskbar button {
+    padding: 0 5px;
+    margin: 3px 2px;
+    border-radius: 10px;
+    background-color: transparent;
+    opacity: 0.45;
+}
+#taskbar button.active {
+    opacity: 1;
+    background-color: #262626;
+}

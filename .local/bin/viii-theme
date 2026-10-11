@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+if [[ "${1:-}" == [!-]* ]]; then "$HOME/.local/bin/viii-wm-theme" "$1" >/dev/null 2>>"$HOME/.cache/viii-wm-theme.log" || true; fi
+# File: ~/.local/bin/viii-theme
+# Usage: viii-theme <name>     switch to the theme in ~/viii-shell-2/themes/<name>
+#        viii-theme --restore  re-apply the last theme (used at login, no fade)
+#        viii-theme --list     print every theme folder that has a palette.json
+#        viii-theme --picker   open the theme picker (run it again to close it)
+#        viii-theme --scan     (used by the picker) one JSON line per theme folder
+set -u
+
+ROOT="$HOME/viii-shell-2"
+THEMES="$ROOT/themes"
+SHELL_DIR="$ROOT/shell"
+STATE="$HOME/.local/state/viii-shell"
+FADE_SECS="0.8"                      # wallpaper crossfade length
+mkdir -p "$STATE"
+
+# awww is the new name of swww; use whichever is installed.
+WP=awww
+command -v awww >/dev/null 2>&1 || WP=swww
+
+list_themes() {
+  for d in "$THEMES"/*/; do
+    [ -f "${d}palette.json" ] && basename "$d"
+  done
+}
+
+INSTANT=0
+case "${1:-}" in
+  --list)
+    list_themes; exit 0 ;;
+  --scan)
+    printf '{"current":"%s"}\n' "$(cat "$STATE/current" 2>/dev/null || true)"
+    for d in "$THEMES"/*/; do
+      [ -f "${d}palette.json" ] || continue
+      bgfile=""
+      for ext in jpg jpeg png webp; do
+        [ -f "${d}bg.$ext" ] && { bgfile="bg.$ext"; break; }
+      done
+      printf '{"name":"%s","bg":"%s","p":%s}\n' "$(basename "$d")" "$bgfile" "$(tr -d '\r\n' < "${d}palette.json")"
+    done
+    exit 0 ;;
+  --picker)
+    # toggle: if a picker is already open, ask it to close; otherwise start one
+    if qs -p "$ROOT/picker" ipc call picker dismiss >/dev/null 2>&1; then exit 0; fi
+    setsid -f qs -p "$ROOT/picker" >/dev/null 2>&1
+    exit 0 ;;
+  --restore)
+    INSTANT=1
+    THEME="$(cat "$STATE/current" 2>/dev/null || true)"
+    [ -f "$THEMES/$THEME/palette.json" ] || THEME="$(list_themes | head -n1)" ;;
+  "")
+    echo "usage: viii-theme <name> | --restore | --list | --picker" >&2; exit 1 ;;
+  *)
+    THEME="$1" ;;
+esac
+
+PAL="$THEMES/$THEME/palette.json"
+[ -f "$PAL" ] || { echo "viii-theme: no palette.json for '$THEME' in $THEMES" >&2; exit 1; }
+
+# 1. wallpaper: the awww daemon crossfades from the old image to the new one
+IMG=""
+for ext in jpg jpeg png webp; do
+  [ -f "$THEMES/$THEME/bg.$ext" ] && { IMG="$THEMES/$THEME/bg.$ext"; break; }
+done
+if [ -n "$IMG" ]; then
+  if ! pgrep -x "${WP}-daemon" >/dev/null 2>&1; then
+    setsid -f "${WP}-daemon" >/dev/null 2>&1
+    for _ in $(seq 1 30); do "$WP" query >/dev/null 2>&1 && break; sleep 0.1; done
+  fi
+  TYPE=fade; [ "$INSTANT" = 1 ] && TYPE=none
+  if "$WP" img "$IMG" --transition-type "$TYPE" --transition-duration "$FADE_SECS" --transition-fps 60 >/dev/null 2>&1; then
+    pkill -x swaybg >/dev/null 2>&1      # the old wallpaper tool is no longer needed
+  fi
+fi
+rm -f "$STATE/swaybg.pid"
+
+# 2. remember the theme (the shell reads this when it starts)
+printf '%s\n' "$THEME" > "$STATE/current"
+
+# 3. colors: a running shell is told over IPC (colors fade, no restart);
+#    otherwise start it. The old per-theme shells are stopped first.
+if qs -p "$SHELL_DIR" ipc call theme getTheme >/dev/null 2>&1; then
+  qs -p "$SHELL_DIR" ipc call theme setTheme "$THEME" >/dev/null 2>&1
+else
+  sleep 0.25
+  setsid -f qs -p "$SHELL_DIR" >/dev/null 2>&1
+fi
+
+# 4. labwc window borders come from the palette's wmActive / wmInactive
+getkey() {   # getkey <key>  -> the "#rrggbb" value of that key in palette.json
+  sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$PAL" | head -n1
+}
+ACT="$(getkey wmActive)"
+INACT="$(getkey wmInactive)"
+if [ -n "$ACT" ] && [ -n "$INACT" ]; then
+  RC="$HOME/.config/labwc/themerc-override"
+  touch "$RC"
+  setkey() {   # setkey <key> <value>: replace the line if it exists, else add it
+    if grep -q "^$1:" "$RC"; then sed -i "s|^$1:.*|$1: $2|" "$RC"; else echo "$1: $2" >> "$RC"; fi
+  }
+  setkey window.active.border.color   "$ACT"
+  setkey window.inactive.border.color "$INACT"
+  setkey menu.border.color            "$ACT"
+  setkey osd.border.color             "$ACT"
+  labwc --reconfigure >/dev/null 2>&1 || true
+fi

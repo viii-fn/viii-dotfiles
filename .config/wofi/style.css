@@ -1,0 +1,58 @@
+/* Outer window: this is where the border and transparency live */
+window {
+    margin: 0px;
+    background-color: rgba(18, 18, 18, 0.85);
+    border: 1px solid #888888;
+    border-radius: 10px;              /* matches labwc */
+    font-family: monospace;
+    font-size: 14px;
+}
+
+#outer-box {
+    margin: 8px;
+    background-color: transparent;
+}
+
+/* Search box */
+#input {
+    margin: 0 0 8px 0;
+    padding: 8px 10px;
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #e5e5e5;
+    border: 1px solid #888888;
+    border-radius: 6px;
+    box-shadow: none;
+}
+
+#input:focus {
+    border-color: #e5e5e5;
+}
+
+#scroll {
+    background-color: transparent;
+}
+
+#inner-box {
+    background-color: transparent;
+}
+
+/* Each result row */
+#entry {
+    padding: 6px 8px;
+    background-color: transparent;
+    border-radius: 6px;
+}
+
+#text {
+    color: #e5e5e5;
+}
+
+/* Highlighted row */
+#entry:selected {
+    background-color: rgba(136, 136, 136, 0.25);
+    outline: none;
+}
+
+#entry:selected #text {
+    color: #ffffff;
+}

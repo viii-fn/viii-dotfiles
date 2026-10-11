@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<labwc_config>
+  <theme>
+    <name>Vent</name>
+    <cornerRadius>10</cornerRadius>
+    <dropShadows>yes</dropShadows>
+    <icon>Papirus</icon>
+    <titlebar>
+      <!-- left : right  ->  nothing on the left, only close on the right -->
+      <layout>iconify:</layout>
+      <showTitle>no</showTitle>
+    </titlebar>
+  </theme>
+
+  <keyboard>
+    <default />
+
+    <keybind key="W-w">
+      <action name="Execute" command="firefox" />
+    </keybind>
+    <keybind key="W-space">
+      <action name="Execute" command="wofi --show drun" />
+    </keybind>
+    <keybind key="W-f">
+      <action name="Execute" command="thunar" />
+    </keybind>
+    <keybind key="W-Return">
+      <action name="Execute" command="kitty" />
+    </keybind>
+    <keybind key="W-p">
+      <action name="Execute" command="wdisplays" />
+    </keybind>
+    <keybind key="W-q">
+      <action name="Close" />
+    </keybind>
+    <keybind key="W-S-e">
+      <action name="Exit" />
+    </keybind>
+
+    <!-- Screenshots -->
+    <keybind key="Print">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/screenshot" />
+    </keybind>
+    <keybind key="S-Print">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/screenshot region" />
+    </keybind>
+    <keybind key="C-Print">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/screenshot output" />
+    </keybind>
+
+    <!-- Volume: -l 1.0 stops it at 100%. Raise it if you want more headroom -->
+    <keybind key="XF86AudioRaiseVolume">
+      <action name="Execute" command="wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+" />
+    </keybind>
+    <keybind key="XF86AudioLowerVolume">
+      <action name="Execute" command="wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" />
+    </keybind>
+    <keybind key="XF86AudioMute">
+      <action name="Execute" command="wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" />
+    </keybind>
+
+    <!-- Brightness (needs brightnessctl) -->
+    <keybind key="XF86MonBrightnessUp">
+      <action name="Execute" command="brightnessctl set 5%+" />
+    </keybind>
+    <keybind key="XF86MonBrightnessDown">
+      <action name="Execute" command="brightnessctl set 5%-" />
+    </keybind>
+
+    <!-- Media keys -->
+    <keybind key="XF86AudioPlay">
+      <action name="Execute" command="playerctl play-pause" />
+    </keybind>
+    <keybind key="XF86AudioNext">
+      <action name="Execute" command="playerctl next" />
+    </keybind>
+    <keybind key="XF86AudioPrev">
+      <action name="Execute" command="playerctl previous" />
+    </keybind>
+
+    <keybind key="W-t">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/viii-theme --picker" />
+    </keybind>
+    <keybind key="W-m">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl music toggle" />
+    </keybind>
+    <keybind key="W-i">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl wifi toggle" />
+    </keybind>
+    <keybind key="W-o">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl audio toggle" />
+    </keybind>
+    <keybind key="W-j">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl dpi toggle" />
+    </keybind>
+    <keybind key="W-u">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl screentime toggle" />
+    </keybind>
+    <keybind key="W-c">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl trim toggle" />
+    </keybind>
+  </keyboard>
+</labwc_config>
