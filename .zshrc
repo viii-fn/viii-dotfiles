@@ -39,11 +39,11 @@ export PATH="$HOME/.local/bin:$PATH"
 alias rebar='killall waybar; setsid waybar >/dev/null 2>&1 &!'
 alias reshell='killall qs; setsid qs >/dev/null 2>&1 &!'
 alias keybind='cat ~/.config/labwc/rc.xml'
-alias rebind='zeditor ~/.config/labwc/rc.xml'
+alias rebind='micro ~/.config/labwc/rc.xml'
 alias clean='~/.local/bin/clean.sh'
 alias note='zeditor ~/Documents/note.txt'
 alias churchnote='zeditor ~/Documents/church-note.txt'
-alias autostart='zeditor ~/.config/labwc/autostart'
+alias autostart='micro ~/.config/labwc/autostart'
 
 # Full-screen recording -> ~/Videos/Screenclips/clip_<timestamp>.mp4
 # Stop with Ctrl+C
