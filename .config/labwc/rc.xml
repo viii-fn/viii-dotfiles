@@ -7,7 +7,7 @@
     <icon>Papirus</icon>
     <titlebar>
       <!-- left : right  ->  nothing on the left, only close on the right -->
-      <layout>iconify:</layout>
+      <layout>iconify,close:</layout>
       <showTitle>no</showTitle>
     </titlebar>
   </theme>
@@ -19,7 +19,7 @@
       <action name="Execute" command="firefox" />
     </keybind>
     <keybind key="W-space">
-      <action name="Execute" command="wofi --show drun" />
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl omni toggle" />
     </keybind>
     <keybind key="W-f">
       <action name="Execute" command="thunar" />
@@ -85,7 +85,7 @@
       <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl music toggle" />
     </keybind>
     <keybind key="W-i">
-      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl wifi toggle" />
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl quicksettings toggle" />
     </keybind>
     <keybind key="W-o">
       <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl audio toggle" />
@@ -98,6 +98,18 @@
     </keybind>
     <keybind key="W-c">
       <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl trim toggle" />
+    </keybind>
+    <keybind key="W-g">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl gallery toggle" />
+    </keybind>
+    <keybind key="W-n">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl notes toggle" />
+    </keybind>
+    <keybind key="W-S-n">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl notes daily" />
+    </keybind>
+    <keybind key="W-h">
+      <action name="Execute" command="bash /home/viii_fn/.local/bin/qsctl weather toggle" />
     </keybind>
   </keyboard>
 </labwc_config>

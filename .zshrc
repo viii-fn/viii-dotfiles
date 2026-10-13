@@ -83,6 +83,19 @@ srecm() {
   _clip_record -g "$(slurp)" "$@"
 }
 
+
+# dotfiles bare repo: use `dot` instead of `git` for dotfiles
+alias dot='git --git-dir=$HOME/.dotfiles --work-tree=$HOME'
+alias dotlg='lazygit --git-dir=$HOME/.dotfiles --work-tree=$HOME'
+
+y() {
+  local tmp="$(mktemp -t yazi-cwd.XXXXXX)" cwd
+  yazi "$@" --cwd-file="$tmp"
+  cwd="$(command cat -- "$tmp")"
+  [ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
+  rm -f -- "$tmp"
+}
+
 # --- END OF CUSTOM COMMANDS ---
 
 setopt interactive_comments
@@ -97,7 +110,3 @@ bindkey '^[[3~'   delete-char
 bindkey '^[[1;5C' forward-word      # Ctrl+Right
 bindkey '^[[1;5D' backward-word     # Ctrl+Left
 bindkey '^[[3;5~' kill-word         # Ctrl+Delete
-
-# dotfiles bare repo: use `dot` instead of `git` for dotfiles
-alias dot='git --git-dir=$HOME/.dotfiles --work-tree=$HOME'
-alias dotlg='lazygit --git-dir=$HOME/.dotfiles --work-tree=$HOME'
