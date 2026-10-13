@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
 # viii-wm-theme: regenerate the labwc theme from a theme's palette.json
 # usage: viii-wm-theme atmos     (or a path to any palette.json)
+#
+# Writes two things:
+#   1) ~/.config/labwc/themerc-override   (colors, button size, titlebar)
+#   2) the pill-shaped SVG buttons (iconify + close), colored from the palette
+#
+# Optional env:
+#   VIII_CLOSE_GLYPH=tilde|x     glyph on the close half of the pill (default: tilde)
+#   VIII_BUTTON_DIR=<dir>        where the SVGs go (default: the Vent theme dir below)
 set -euo pipefail
 
 THEMES="$HOME/viii-shell-2/themes"
 OUT="$HOME/.config/labwc/themerc-override"
+BUTTON_DIR="${VIII_BUTTON_DIR:-$HOME/.local/share/themes/Vent/openbox-3}"
+CLOSE_GLYPH="${VIII_CLOSE_GLYPH:-tilde}"
 BORDER_WIDTH=1   # set to 0 for no window border
 
 name="${1:?usage: viii-wm-theme <theme-name | path/to/palette.json>}"
@@ -18,55 +28,85 @@ need() {
   [ -n "$v" ] || { echo "palette missing '$1' in $pal" >&2; exit 1; }
   printf '%s' "$v"
 }
+# optional key with a fallback
+opt() { local v; v="$(get "$1")"; printf '%s' "${v:-$2}"; }
 
 BG=$(need bg);           SURFACE=$(need surface);   SURFACE_HI=$(need surfaceHi)
 LINE=$(need line);       FG=$(need fg);             FG_DIM=$(need fgDim)
 ACCENT=$(need accent);   ACCENT_HI=$(need accentHi)
 WM_ACTIVE=$(need wmActive); WM_INACTIVE=$(need wmInactive)
 
+# Pill colors: use palette keys if present, otherwise derive from the theme
+PILL=$(opt pill "$ACCENT")                  # active pill fill
+PILL_HI=$(opt pillHi "$ACCENT_HI")          # active pill, hovered
+PILL_OFF=$(opt pillInactive "$LINE")        # inactive pill fill
+PILL_OFF_HI=$(opt pillInactiveHi "$FG_DIM") # inactive pill, hovered
+GLYPH=$(opt glyph "$BG")                    # dash / tilde, dark on the pill
+
+# ---------------------------------------------------------------------------
+# SVG buttons. Two 34x28 pieces side by side (spacing 0) make one 68x28 pill:
+#   iconify = flat left half with a dash
+#   close   = right half with a straight left edge and a round right end
+# labwc prefers svg over xbm, so these replace iconify.xbm / close.xbm.
+# ---------------------------------------------------------------------------
+glyph_dash() {
+  printf '<rect x="11" y="13" width="12" height="2" rx="1" fill="%s"/>' "$1"
+}
+glyph_close() {
+  case "$CLOSE_GLYPH" in
+    x) printf '<path d="M12 9L22 19M22 9L12 19" stroke="%s" stroke-width="2" stroke-linecap="round" fill="none"/>' "$1" ;;
+    *) printf '<path d="M10 15C11.500 9.500 14.500 9.500 17 13S22.500 17.500 24 12" stroke="%s" stroke-width="2" stroke-linecap="round" fill="none"/>' "$1" ;;
+  esac
+}
+svg_iconify() {  # $1 = pill fill, $2 = glyph color
+  printf '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="28" viewBox="0 0 34 28">\n'
+  printf '  <rect width="34" height="28" fill="%s"/>\n' "$1"
+  printf '  %s\n</svg>\n' "$(glyph_dash "$2")"
+}
+svg_close() {    # $1 = pill fill, $2 = glyph color
+  printf '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="28" viewBox="0 0 34 28">\n'
+  printf '  <path d="M0 0H20a14 14 0 0 1 0 28H0Z" fill="%s"/>\n' "$1"
+  printf '  %s\n</svg>\n' "$(glyph_close "$2")"
+}
+
+mkdir -p "$BUTTON_DIR"
+for st in active inactive; do
+  if [ "$st" = active ]; then fill="$PILL";     hov="$PILL_HI"
+  else                        fill="$PILL_OFF"; hov="$PILL_OFF_HI"; fi
+  svg_iconify "$fill" "$GLYPH" > "$BUTTON_DIR/iconify-$st.svg"
+  svg_iconify "$hov"  "$GLYPH" > "$BUTTON_DIR/iconify_hover-$st.svg"
+  svg_close   "$fill" "$GLYPH" > "$BUTTON_DIR/close-$st.svg"
+  svg_close   "$hov"  "$GLYPH" > "$BUTTON_DIR/close_hover-$st.svg"
+done
+
+# ---------------------------------------------------------------------------
+# themerc-override
+# ---------------------------------------------------------------------------
 tmp="$(mktemp)"
 cat > "$tmp" <<EOF
 ### WINDOW
 border.width: $BORDER_WIDTH
-window.client.padding.width: 0
-window.client.padding.height: 0
-window.handle.width: 0
-padding.width: 4
-padding.height: 4
+window.titlebar.padding.width: 0
+window.titlebar.padding.height: 0
+
+# size of the SVG pieces; spacing 0 joins them into one pill
+window.button.width: 34
+window.button.height: 28
+window.button.spacing: 0
+window.button.hover.bg.color: #00000000
+window.button.hover.bg.corner-radius: 0
 
 window.active.border.color: $WM_ACTIVE
 window.inactive.border.color: $WM_INACTIVE
-window.active.title.separator.color: $SURFACE
-window.inactive.title.separator.color: $BG
-window.active.client.color: $SURFACE
-window.inactive.client.color: $BG
+
+window.active.title.bg: Solid
+window.active.title.bg.color: $SURFACE
+window.inactive.title.bg: Solid
+window.inactive.title.bg.color: $BG
+
 window.active.label.text.color: $FG
 window.inactive.label.text.color: $FG_DIM
-
-window.active.title.bg: flat solid
-window.active.title.bg.color: $SURFACE
-window.active.label.bg: flat solid
-window.active.label.bg.color: $SURFACE
-window.inactive.title.bg: flat solid
-window.inactive.title.bg.color: $BG
-window.inactive.label.bg: flat solid
-window.inactive.label.bg.color: $BG
-
-window.active.button.unpressed.bg: parentrelative
-window.active.button.pressed.bg: parentrelative
-window.active.button.hover.bg: parentrelative
-window.active.button.disabled.bg: parentrelative
-window.active.button.toggled.unpressed.bg: parentrelative
-window.active.button.toggled.pressed.bg: parentrelative
-window.active.button.toggled.hover.bg: parentrelative
-window.inactive.button.unpressed.bg: parentrelative
-window.inactive.button.pressed.bg: parentrelative
-window.inactive.button.hover.bg: parentrelative
-window.inactive.button.disabled.bg: parentrelative
-window.inactive.button.toggled.unpressed.bg: parentrelative
-window.inactive.button.toggled.pressed.bg: parentrelative
-window.inactive.button.toggled.hover.bg: parentrelative
-window.label.text.justify: center
+window.label.text.justify: Left
 
 ### MENU
 menu.border.width: 6
@@ -79,31 +119,19 @@ menu.border.color: $BG
 menu.separator.color: $LINE
 menu.title.text.color: $FG
 menu.items.text.color: $FG
-menu.items.disabled.text.color: $FG_DIM
 menu.items.active.text.color: $ACCENT_HI
-menu.items.active.disabled.text.color: $FG_DIM
-menu.items.bg: flat solid
 menu.items.bg.color: $SURFACE
-menu.items.active.bg: flat solid
 menu.items.active.bg.color: $SURFACE_HI
-menu.title.bg: flat solid
 menu.title.bg.color: $BG
-menu.title.text.justify: center
+menu.title.text.justify: Center
 
 ### OSD
 osd.border.width: 1
 osd.border.color: $LINE
 osd.label.text.color: $FG
-osd.bg: flat solid
 osd.bg.color: $SURFACE
-osd.label.bg: flat solid
-osd.label.bg.color: $SURFACE
-osd.hilight.bg: flat solid
-osd.hilight.bg.color: $ACCENT
-osd.unhilight.bg: flat solid
-osd.unhilight.bg.color: $LINE
 
-### BUTTONS (monochrome)
+### BUTTONS: fallback colors for any button that has no svg (xbm only)
 window.active.button.disabled.image.color: $LINE
 window.active.button.hover.image.color: $ACCENT_HI
 window.active.button.toggled.image.color: $ACCENT_HI
@@ -123,5 +151,49 @@ done
 
 mv "$tmp" "$OUT"
 pgrep -x labwc >/dev/null && labwc --reconfigure || true
+# ---------------------------------------------------------------------------
+# micro colorscheme, generated from the same palette
+# micro reads ~/.config/micro/colorschemes/<name>.micro
+# format: color-link <group> "<fg>,<bg>"
+# ---------------------------------------------------------------------------
+MICRO_DIR="$HOME/.config/micro"
+mkdir -p "$MICRO_DIR/colorschemes"
+cat > "$MICRO_DIR/colorschemes/viii.micro" <<EOF
+color-link default "$FG,$BG"
+color-link comment "$FG_DIM"
+color-link identifier "$ACCENT_HI"
+color-link constant "$ACCENT"
+color-link constant.string "$ACCENT"
+color-link statement "$ACCENT_HI"
+color-link symbol "$FG"
+color-link preproc "$ACCENT"
+color-link type "$ACCENT_HI"
+color-link special "$ACCENT"
+color-link underlined "underline $ACCENT"
+color-link error "bold #ff5555"
+color-link todo "bold $ACCENT_HI"
+color-link statusline "$FG,$SURFACE"
+color-link tabbar "$FG_DIM,$SURFACE"
+color-link tabbar.active "$BG,$ACCENT"
+color-link line-number "$FG_DIM,$BG"
+color-link current-line-number "$ACCENT_HI,$BG"
+color-link gutter-error "#ff5555,$BG"
+color-link gutter-warning "$ACCENT,$BG"
+color-link cursor-line "$SURFACE"
+color-link divider "$LINE"
+color-link indent-char "$LINE,$BG"
+color-link color-column "$SURFACE"
+color-link selection "$FG,$SURFACE_HI"
+EOF
+
+# point micro at it (create settings.json if missing)
+MS="$MICRO_DIR/settings.json"
+if [ -f "$MS" ] && grep -q '"colorscheme"' "$MS"; then
+  sed -i 's/"colorscheme": *"[^"]*"/"colorscheme": "viii"/' "$MS"
+elif [ -f "$MS" ]; then
+  sed -i '0,/{/s/{/{\n    "colorscheme": "viii",/' "$MS"
+else
+  printf '{\n    "colorscheme": "viii"\n}\n' > "$MS"
+fi
 "$HOME/.local/bin/viii-app-theme" "$pal"
 echo "labwc theme set from: $pal"
