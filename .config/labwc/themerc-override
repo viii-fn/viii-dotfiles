@@ -1,44 +1,26 @@
 ### WINDOW
 border.width: 1
-window.client.padding.width: 0
-window.client.padding.height: 0
-window.handle.width: 0
-padding.width: 4
-padding.height: 4
+window.titlebar.padding.width: 0
+window.titlebar.padding.height: 0
+
+# size of the SVG pieces; spacing 0 joins them into one pill
+window.button.width: 34
+window.button.height: 28
+window.button.spacing: 0
+window.button.hover.bg.color: #00000000
+window.button.hover.bg.corner-radius: 0
 
 window.active.border.color: #ffd23f
 window.inactive.border.color: #5c4d17
-window.active.title.separator.color: #3a351c
-window.inactive.title.separator.color: #161410
-window.active.client.color: #3a351c
-window.inactive.client.color: #161410
+
+window.active.title.bg: Solid
+window.active.title.bg.color: #161410D9
+window.inactive.title.bg: Solid
+window.inactive.title.bg.color: #161410D9
+
 window.active.label.text.color: #e5e5e5
 window.inactive.label.text.color: #b0a088
-
-window.active.title.bg: flat solid
-window.active.title.bg.color: #3a351c
-window.active.label.bg: flat solid
-window.active.label.bg.color: #3a351c
-window.inactive.title.bg: flat solid
-window.inactive.title.bg.color: #161410
-window.inactive.label.bg: flat solid
-window.inactive.label.bg.color: #161410
-
-window.active.button.unpressed.bg: parentrelative
-window.active.button.pressed.bg: parentrelative
-window.active.button.hover.bg: parentrelative
-window.active.button.disabled.bg: parentrelative
-window.active.button.toggled.unpressed.bg: parentrelative
-window.active.button.toggled.pressed.bg: parentrelative
-window.active.button.toggled.hover.bg: parentrelative
-window.inactive.button.unpressed.bg: parentrelative
-window.inactive.button.pressed.bg: parentrelative
-window.inactive.button.hover.bg: parentrelative
-window.inactive.button.disabled.bg: parentrelative
-window.inactive.button.toggled.unpressed.bg: parentrelative
-window.inactive.button.toggled.pressed.bg: parentrelative
-window.inactive.button.toggled.hover.bg: parentrelative
-window.label.text.justify: center
+window.label.text.justify: Left
 
 ### MENU
 menu.border.width: 6
@@ -51,31 +33,19 @@ menu.border.color: #ffd23f
 menu.separator.color: #5c4d17
 menu.title.text.color: #e5e5e5
 menu.items.text.color: #e5e5e5
-menu.items.disabled.text.color: #b0a088
 menu.items.active.text.color: #ffca28
-menu.items.active.disabled.text.color: #b0a088
-menu.items.bg: flat solid
 menu.items.bg.color: #3a351c
-menu.items.active.bg: flat solid
 menu.items.active.bg.color: #4d4624
-menu.title.bg: flat solid
 menu.title.bg.color: #161410
-menu.title.text.justify: center
+menu.title.text.justify: Center
 
 ### OSD
 osd.border.width: 1
 osd.border.color: #ffd23f
 osd.label.text.color: #e5e5e5
-osd.bg: flat solid
 osd.bg.color: #3a351c
-osd.label.bg: flat solid
-osd.label.bg.color: #3a351c
-osd.hilight.bg: flat solid
-osd.hilight.bg.color: #ffd700
-osd.unhilight.bg: flat solid
-osd.unhilight.bg.color: #5c4d17
 
-### BUTTONS (monochrome)
+### BUTTONS: fallback colors for any button that has no svg (xbm only)
 window.active.button.disabled.image.color: #5c4d17
 window.active.button.hover.image.color: #ffca28
 window.active.button.toggled.image.color: #ffca28

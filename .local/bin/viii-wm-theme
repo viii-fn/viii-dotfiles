@@ -15,7 +15,11 @@ THEMES="$HOME/viii-shell-2/themes"
 OUT="$HOME/.config/labwc/themerc-override"
 BUTTON_DIR="${VIII_BUTTON_DIR:-$HOME/.local/share/themes/Vent/openbox-3}"
 CLOSE_GLYPH="${VIII_CLOSE_GLYPH:-tilde}"
+VIII_MIN_GLYPH="${VIII_MIN_GLYPH:-xiao}"   # xiao (小) | xia (下) | dash (一)
 BORDER_WIDTH=1   # set to 0 for no window border
+# Titlebar opacity as a 2-digit hex alpha. 85% transparent = 15% opaque = 0x26.
+# (0.15 * 255 = 38 = 0x26). For 85% opaque instead, use D9.
+TITLE_ALPHA="${VIII_TITLE_ALPHA:-D9}"
 
 name="${1:?usage: viii-wm-theme <theme-name | path/to/palette.json>}"
 if [ -f "$name" ]; then pal="$name"; else pal="$THEMES/$name/palette.json"; fi
@@ -49,8 +53,14 @@ GLYPH=$(opt glyph "$BG")                    # dash / tilde, dark on the pill
 #   close   = right half with a straight left edge and a round right end
 # labwc prefers svg over xbm, so these replace iconify.xbm / close.xbm.
 # ---------------------------------------------------------------------------
-glyph_dash() {
-  printf '<rect x="11" y="13" width="12" height="2" rx="1" fill="%s"/>' "$1"
+glyph_dash() {   # $1 = glyph color; draws the minimize glyph
+  case "$VIII_MIN_GLYPH" in
+    dash) printf '<rect x="11" y="13" width="12" height="2" rx="1" fill="%s"/>' "$1" ;;
+    xia)  # 下 "down"
+      printf '<path d="M10 9H24M17 9V20M17 13L21.500 16.500" stroke="%s" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' "$1" ;;
+    *)    # 小 "small": center stroke, plus a left and right falling stroke
+      printf '<path d="M17 8V19M12.500 12Q12 15.500 10 18M21.500 12Q22 15.500 24 18" stroke="%s" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' "$1" ;;
+  esac
 }
 glyph_close() {
   case "$CLOSE_GLYPH" in
@@ -100,9 +110,9 @@ window.active.border.color: $WM_ACTIVE
 window.inactive.border.color: $WM_INACTIVE
 
 window.active.title.bg: Solid
-window.active.title.bg.color: $SURFACE
+window.active.title.bg.color: ${BG:0:7}${TITLE_ALPHA}
 window.inactive.title.bg: Solid
-window.inactive.title.bg.color: $BG
+window.inactive.title.bg.color: ${BG:0:7}${TITLE_ALPHA}
 
 window.active.label.text.color: $FG
 window.inactive.label.text.color: $FG_DIM
