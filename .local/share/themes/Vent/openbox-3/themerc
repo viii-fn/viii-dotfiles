@@ -1,0 +1,62 @@
+# Vent (labwc) - pill-ended control tab on the left of the titlebar.
+# The pill itself is drawn by the SVG buttons (iconify = flat left half,
+# close = rounded right half); the titlebar is flat so it blends with the window.
+
+### WINDOW
+
+border.width: 1
+window.titlebar.padding.width: 0
+window.titlebar.padding.height: 0
+
+# Button size = size of the SVGs. Two buttons side by side with no spacing
+# make one 68x28 tab with a round right end.
+window.button.width: 34
+window.button.height: 28
+window.button.spacing: 0
+window.button.hover.bg.color: #00000000
+window.button.hover.bg.corner-radius: 0
+
+window.active.border.color: #5c4a35
+window.inactive.border.color: #3d3022
+
+window.active.title.bg: Solid
+window.active.title.bg.color: #2a2118
+window.inactive.title.bg: Solid
+window.inactive.title.bg.color: #211a13
+
+window.active.label.text.color: #e6d3ac
+window.inactive.label.text.color: #7d6a52
+window.label.text.justify: Left
+
+# Fallback colors if the SVGs are missing (xbm buttons)
+window.active.button.unpressed.image.color: #c9a66b
+window.inactive.button.unpressed.image.color: #7d6a52
+
+window.active.shadow.size: 30
+window.inactive.shadow.size: 20
+
+### MENU
+
+border.color: #5c4a35
+menu.border.width: 6
+menu.border.color: #2a2118
+menu.overlap.x: 0
+menu.overlap.y: 0
+menu.separator.width: 2
+menu.separator.padding.width: 10
+menu.separator.padding.height: 2
+menu.separator.color: #5c4a35
+menu.title.bg.color: #1c150f
+menu.title.text.color: #e6d3ac
+menu.title.text.justify: Center
+menu.items.bg.color: #2a2118
+menu.items.text.color: #c9b48c
+menu.items.active.bg.color: #3d3022
+menu.items.active.text.color: #e8c27a
+
+### OSD
+
+osd.border.width: 1
+osd.border.color: #5c4a35
+osd.bg.color: #2a2118
+osd.label.text.color: #e6d3ac
