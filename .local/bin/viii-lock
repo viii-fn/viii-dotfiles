@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# File: ~/.local/bin/viii-lock
+#
+#   viii-lock lock                    start the lockscreen (exits by itself after unlock)
+#   viii-lock avatar <image>          save your profile image
+#   viii-lock wallpaper <image>       set the lockscreen wallpaper
+#   viii-lock wallpaper clear         remove the wallpaper (plain background)
+#
+# Images are copied into ~/.config/viii-lock/, so you can delete the originals.
+
+set -euo pipefail
+
+cfg="$HOME/.config/viii-lock"
+shell="$HOME/viii-shell-2/lock"
+mkdir -p "$cfg"
+
+usage() {
+    sed -n '3,9p' "$0" | sed 's/^# \{0,1\}//' >&2
+    exit 1
+}
+
+case "${1:-lock}" in
+    lock)
+        # --no-duplicate: if a lock is already running, do nothing
+        exec qs --no-duplicate -p "$shell"
+        ;;
+    avatar)
+        [[ -f "${2:-}" ]] || usage
+        cp -f -- "$2" "$cfg/avatar"
+        echo "Profile image saved."
+        ;;
+    wallpaper)
+        if [[ "${2:-}" == "clear" ]]; then
+            rm -f -- "$cfg/wallpaper"
+            echo "Lockscreen wallpaper removed."
+        else
+            [[ -f "${2:-}" ]] || usage
+            cp -f -- "$2" "$cfg/wallpaper"
+            echo "Lockscreen wallpaper saved."
+        fi
+        ;;
+    *)
+        usage
+        ;;
+esac
