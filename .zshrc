@@ -8,6 +8,7 @@ setopt HIST_IGNORE_SPACE     # commands starting with a space are not saved
 
 # Created by newuser for 5.9.2
 source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+[[ $- == *i* && $TERM == xterm-kitty ]] && ~/.config/greeting/greeting.sh
 eval "$(starship init zsh)"
 # --- Transient prompt: collapse old prompts to a short one ---
 
