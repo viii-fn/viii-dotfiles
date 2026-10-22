@@ -1,0 +1,18 @@
+{
+  "label": "Desert",
+  "bg": "#1e1815",
+  "bgAlpha": 0.92,
+  "surface": "#5d4037",
+  "surfaceHi": "#6d4c41",
+  "line": "#5a4630",
+  "fg": "#d7ccc8",
+  "fgDim": "#a1887f",
+  "accent": "#d7ccc8",
+  "accentHi": "#ffffff",
+  "onAccent": "#1e1815",
+  "good": "#d7ccc8",
+  "bad": "#e57373",
+  "chart": ["#d7ccc8", "#bcaaa4", "#a1887f", "#8d6e63", "#795548", "#6d4c41", "#e5e5e5", "#888888"],
+  "wmActive": "#e8b27a",
+  "wmInactive": "#5a4630"
+}

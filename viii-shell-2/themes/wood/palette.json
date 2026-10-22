@@ -1,0 +1,18 @@
+{
+  "label": "Wood",
+  "bg": "#161410",
+  "bgAlpha": 0.92,
+  "surface": "#3a351c",
+  "surfaceHi": "#4d4624",
+  "line": "#5c4d17",
+  "fg": "#e5e5e5",
+  "fgDim": "#b0a088",
+  "accent": "#ffd700",
+  "accentHi": "#ffca28",
+  "onAccent": "#161410",
+  "good": "#ffd700",
+  "bad": "#ff6b6b",
+  "chart": ["#ffd700", "#ffca28", "#ffe082", "#ffecb3", "#ffe0b2", "#ffccbc", "#e5e5e5", "#888888"],
+  "wmActive": "#ffd23f",
+  "wmInactive": "#5c4d17"
+}

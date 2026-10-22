@@ -1,0 +1,18 @@
+{
+  "label": "Sakura",
+  "bg": "#15101a",
+  "bgAlpha": 0.92,
+  "surface": "#221a29",
+  "surfaceHi": "#2f2438",
+  "line": "#4a3a55",
+  "fg": "#e6e2ee",
+  "fgDim": "#a69fb8",
+  "accent": "#d070b8",
+  "accentHi": "#e79ad2",
+  "onAccent": "#15101a",
+  "good": "#9fb4e0",
+  "bad": "#e0364a",
+  "chart": ["#d070b8", "#7f8fb8", "#f0c4d8", "#c0364a", "#b4a4dc", "#c9cddf", "#8b2a7c", "#6f7a98"],
+  "wmActive": "#d070b8",
+  "wmInactive": "#4a3a55"
+}

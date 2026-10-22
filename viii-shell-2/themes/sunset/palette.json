@@ -1,0 +1,18 @@
+{
+  "label": "Sunset",
+  "bg": "#12101f",
+  "bgAlpha": 0.92,
+  "surface": "#241a33",
+  "surfaceHi": "#35224a",
+  "line": "#5a2f56",
+  "fg": "#f3e6e6",
+  "fgDim": "#a8899d",
+  "accent": "#f0566e",
+  "accentHi": "#ff8a7a",
+  "onAccent": "#12101f",
+  "good": "#ff8a7a",
+  "bad": "#ff4d4d",
+  "chart": ["#f0566e", "#ff8a7a", "#ffc27a", "#d96aa7", "#a98bff", "#6f7fd6", "#f3e6e6", "#8a7a94"],
+  "wmActive": "#ff8a7a",
+  "wmInactive": "#5a2f56"
+}

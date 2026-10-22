@@ -1,0 +1,18 @@
+{
+  "label": "Kyrie",
+  "bg": "#121217",
+  "bgAlpha": 0.92,
+  "surface": "#1e1c25",
+  "surfaceHi": "#2a2733",
+  "line": "#3d3846",
+  "fg": "#dfe3ec",
+  "fgDim": "#9aa0b2",
+  "accent": "#e07a8a",
+  "accentHi": "#f0a0ac",
+  "onAccent": "#121217",
+  "good": "#7cc4ff",
+  "bad": "#ff5555",
+  "chart": ["#e07a8a", "#7cb7e8", "#b7a6d9", "#f0b4bc", "#8a94b0", "#c9d0dc", "#a8505e", "#5f7fa8"],
+  "wmActive": "#e07a8a",
+  "wmInactive": "#3d3846"
+}

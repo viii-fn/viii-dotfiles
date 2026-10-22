@@ -1,0 +1,18 @@
+{
+  "label": "Atmos",
+  "bg": "#10141c",
+  "bgAlpha": 0.92,
+  "surface": "#1c243a",
+  "surfaceHi": "#26304d",
+  "line": "#2b4560",
+  "fg": "#e5e5e5",
+  "fgDim": "#8892b0",
+  "accent": "#3b82f6",
+  "accentHi": "#60a5fa",
+  "onAccent": "#10141c",
+  "good": "#3b82f6",
+  "bad": "#ff5555",
+  "chart": ["#3b82f6", "#7fd4ff", "#ffd479", "#ff9fb2", "#c3a6ff", "#ffb07a", "#e5e5e5", "#888888"],
+  "wmActive": "#6cb4ff",
+  "wmInactive": "#2b4560"
+}

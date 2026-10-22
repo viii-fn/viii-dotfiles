@@ -1,0 +1,18 @@
+{
+  "label": "Train",
+  "bg": "#0a0d24",
+  "bgAlpha": 0.92,
+  "surface": "#121838",
+  "surfaceHi": "#1b2350",
+  "line": "#2a3a78",
+  "fg": "#e6efff",
+  "fgDim": "#8a9bd0",
+  "accent": "#2fd0ff",
+  "accentHi": "#7ae4ff",
+  "onAccent": "#07102a",
+  "good": "#4de8c2",
+  "bad": "#ff5c7a",
+  "chart": ["#3d7bff", "#4de8f0", "#ffc65a", "#ff9a7a", "#ff5cb0", "#9a7bff", "#4de8c2", "#bfe9ff"],
+  "wmActive": "#2fd0ff",
+  "wmInactive": "#2a3a78"
+}

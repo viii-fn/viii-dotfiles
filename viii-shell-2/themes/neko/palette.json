@@ -1,0 +1,18 @@
+{
+  "label": "Neko",
+  "bg": "#0f1a12",
+  "bgAlpha": 0.92,
+  "surface": "#1a2b1e",
+  "surfaceHi": "#25402b",
+  "line": "#3b5f3f",
+  "fg": "#e8f0d8",
+  "fgDim": "#8fa88a",
+  "accent": "#7cc35a",
+  "accentHi": "#b9e07f",
+  "onAccent": "#0f1a12",
+  "good": "#7cc35a",
+  "bad": "#f0606c",
+  "chart": ["#7cc35a", "#7fd1c0", "#ead98a", "#f0a6a8", "#b7c9ee", "#e8a27a", "#e8f0d8", "#888888"],
+  "wmActive": "#8ed06a",
+  "wmInactive": "#3b5f3f"
+}

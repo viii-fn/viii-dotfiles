@@ -1,0 +1,18 @@
+{
+  "label": "Graphite",
+  "bg": "#1b1b1b",
+  "bgAlpha": 0.92,
+  "surface": "#363636",
+  "surfaceHi": "#424242",
+  "line": "#4a4a4a",
+  "fg": "#e5e5e5",
+  "fgDim": "#9a9a9a",
+  "accent": "#b5b5b5",
+  "accentHi": "#e0e0e0",
+  "onAccent": "#2c2c2c",
+  "good": "#b5b5b5",
+  "bad": "#ff5555",
+  "chart": ["#f0f0f0", "#c8c8c8", "#a0a0a0", "#808080", "#666666", "#dcdcdc", "#b0b0b0", "#8c8c8c"],
+  "wmActive": "#a8a8a8",
+  "wmInactive": "#4a4a4a"
+}

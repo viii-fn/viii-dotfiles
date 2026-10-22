@@ -1,0 +1,18 @@
+{
+  "label": "Monocrhome",
+  "bg": "#121212",
+  "bgAlpha": 0.92,
+  "surface": "#262626",
+  "surfaceHi": "#333333",
+  "line": "#444444",
+  "fg": "#e5e5e5",
+  "fgDim": "#a3a3a3",
+  "accent": "#ffffff",
+  "accentHi": "#cccccc",
+  "onAccent": "#121212",
+  "good": "#ffffff",
+  "bad": "#ff5555",
+  "chart": ["#ffffff", "#dddddd", "#bbbbbb", "#999999", "#777777", "#555555", "#e5e5e5", "#888888"],
+  "wmActive": "#e4e4e4",
+  "wmInactive": "#444444"
+}

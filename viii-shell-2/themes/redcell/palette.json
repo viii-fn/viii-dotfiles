@@ -1,0 +1,18 @@
+{
+  "label": "Redcell",
+  "bg": "#181010",
+  "bgAlpha": 0.92,
+  "surface": "#3a1c1c",
+  "surfaceHi": "#4d2626",
+  "line": "#5c2a2c",
+  "fg": "#e5e5e5",
+  "fgDim": "#a08888",
+  "accent": "#ff5555",
+  "accentHi": "#ff8a80",
+  "onAccent": "#181010",
+  "good": "#ff5555",
+  "bad": "#ff5555",
+  "chart": ["#ff5555", "#ff8a80", "#ffab91", "#ffcc80", "#ce93d8", "#f48fb1", "#e5e5e5", "#888888"],
+  "wmActive": "#ff6b70",
+  "wmInactive": "#5c2a2c"
+}
