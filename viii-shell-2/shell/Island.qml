@@ -50,7 +50,7 @@ PanelWindow {
     implicitWidth: 1200
     implicitHeight: 440
     exclusionMode: ExclusionMode.Normal
-    exclusiveZone: 40
+    exclusiveZone: 32
     color: "transparent"
 
     // Only the pill (it IS the notification now) and the wifi tab catch clicks.
