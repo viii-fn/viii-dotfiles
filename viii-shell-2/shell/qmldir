@@ -1,17 +1,15 @@
 singleton Theme Theme.qml
-AudioPanel AudioPanel.qml
 GlassSlider GlassSlider.qml
 ChamferPanel ChamferPanel.qml
-DpiPanel DpiPanel.qml
-DpiWindow DpiWindow.qml
 HexButton HexButton.qml
 HexPattern HexPattern.qml
 HexShape HexShape.qml
 HexSlider HexSlider.qml
 HexBtn HexButton.qml
-Island Island.qml
-MusicCard MusicCard.qml
-MusicPanel MusicPanel.qml
+Notch Notch.qml
+NotchMusic NotchMusic.qml
+NotchLyrics NotchLyrics.qml
+NotchQuick NotchQuick.qml
 ScreenTimeLogger ScreenTimeLogger.qml
 ScreenTimePanel ScreenTimePanel.qml
 TrimPanel TrimPanel.qml
@@ -22,7 +20,6 @@ GalleryPanel GalleryPanel.qml
 NotesPanel NotesPanel.qml
 WeatherPanel WeatherPanel.qml
 QsSliderRow QsSliderRow.qml
-QuickSettings QuickSettings.qml
 Glass Glass.qml
 IconBtn IconBtn.qml
 StatBlock StatBlock.qml

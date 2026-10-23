@@ -8,27 +8,28 @@ ShellRoot {
     // target that viii-theme uses to switch palettes without a restart.
     readonly property string activeTheme: Theme.name
 
-    // One Island per monitor. Quickshell.screens is the list of connected screens.
+    // One Notch per monitor. Quickshell.screens is the list of connected screens.
+    // NOTE: each Notch runs its own NotificationServer and IPC targets, so with
+    // two monitors only one copy can own them. If you use several screens, change
+    // the model to [Quickshell.screens[0]].
     Variants {
         model: Quickshell.screens
 
-        Island {
-            // Variants hands each copy the screen it belongs to as "modelData".
+        Notch {
             required property var modelData
-            screen: modelData       // tells this copy which monitor to appear on
+            screen: modelData
         }
     }
 
     // Lock is not wrapped: WlSessionLock already makes a lock surface per monitor by itself.
-    MusicPanel {}
-    AudioPanel {}
     ScreenTimeLogger {}
-    DpiPanel {}
-    ScreenTimePanel {}
+
+    // ── Still separate windows, to be ported into the notch next ──
     TrimPanel {}
-    OmniLauncher {}
     GalleryPanel {}
     NotesPanel {}
-    WeatherPanel {}
-    QuickSettings {}
+
+    // Replaced by the notch: Island, MusicPanel, AudioPanel, DpiPanel, QuickSettings,
+    // ScreenTimePanel, WeatherPanel, OmniLauncher
+    // (music, audio output, display scale and quick toggles now live in the notch).
 }
