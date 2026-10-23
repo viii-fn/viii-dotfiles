@@ -1,0 +1,190 @@
+// ── Input ────────────────────────────────────────────────────────────
+input {
+    keyboard {
+        xkb {
+            layout "gb"          // replaces XKB_DEFAULT_LAYOUT=gb from your labwc autostart
+        }
+    }
+    touchpad {
+        tap
+    }
+}
+
+// Replaces <serverDecoration>no</serverDecoration>: asks apps not to draw title bars.
+prefer-no-csd
+
+hotkey-overlay {
+    skip-at-startup
+}
+
+// ── Look ─────────────────────────────────────────────────────────────
+layout {
+    gaps 12
+    default-column-width { proportion 0.5; }
+    preset-column-widths {
+        proportion 0.33333
+        proportion 0.5
+        proportion 0.66667
+    }
+
+    focus-ring { off; }          // using a plain border instead, see below
+    border {
+        width 2
+        active-color "#9ccc65"   // change to match your active theme palette
+        inactive-color "#ffffff22"
+    }
+
+    shadow {                     // your dropShadows=yes
+        on
+        softness 30
+        spread 5
+        offset x=0 y=5
+        color "#0007"
+    }
+}
+
+// Global blur tuning. Fewer passes = lighter on the GPU.
+blur {
+    passes 3
+    offset 2.0
+    noise 0.1
+    saturation 1.6
+}
+
+// Don't force blur. Just make blur see the windows behind a panel,
+// not only the wallpaper. Check the namespace with `niri msg layers`.
+layer-rule {
+    match namespace="^quickshell"
+    background-effect {
+        xray false
+    }
+}
+
+// All windows: rounded corners on all four corners (your cornerRadius 10) + blur.
+// Blur only shows on windows that are semi-transparent (e.g. kitty with opacity).
+// On the HP Stream 11, delete the background-effect block to save GPU.
+window-rule {
+    geometry-corner-radius 10
+    clip-to-geometry true        // cuts the app's content to the rounded shape too
+    background-effect {
+        blur true
+        xray false
+    }
+}
+
+// Quickshell panels. "^quickshell" is a guess: run `niri msg layers` while your
+// shell is up, and put the real namespace here.
+layer-rule {
+    match namespace="^quickshell"
+    background-effect {
+        blur true
+        xray false
+    }
+}
+
+// ── Autostart (replaces ~/.config/labwc/autostart) ───────────────────
+spawn-at-startup "/home/viii_fn/.local/bin/viii-theme" "--restore"
+// Only add this if viii-theme does NOT already start qs (check below), or you'll
+// get two shells and duplicate notification cards again:
+// spawn-at-startup "qs" "-p" "/home/viii_fn/viii-shell-2/shell"
+
+// ── Keybinds ─────────────────────────────────────────────────────────
+binds {
+    // Your apps
+    Mod+W      { spawn "firefox"; }
+    Mod+F      { spawn "thunar"; }
+    Mod+Return { spawn "kitty"; }
+    // Mod+P (wdisplays): see the note below the file, it probably won't work on niri.
+    Mod+Q       { close-window; }
+    Mod+Shift+E { quit; }
+
+    // Your Quickshell panels
+    Mod+Space   { spawn "bash" "/home/viii_fn/.local/bin/qsctl" "omni" "toggle"; }
+    Mod+T       { spawn "bash" "/home/viii_fn/.local/bin/viii-theme" "--picker"; }
+    Mod+M       { spawn "bash" "/home/viii_fn/.local/bin/qsctl" "music" "toggle"; }
+    Mod+I       { spawn "bash" "/home/viii_fn/.local/bin/qsctl" "quicksettings" "toggle"; }
+    Mod+O       { spawn "bash" "/home/viii_fn/.local/bin/qsctl" "audio" "toggle"; }
+    Mod+J       { spawn "bash" "/home/viii_fn/.local/bin/qsctl" "dpi" "toggle"; }
+    Mod+U       { spawn "bash" "/home/viii_fn/.local/bin/qsctl" "screentime" "toggle"; }
+    Mod+C       { spawn "bash" "/home/viii_fn/.local/bin/qsctl" "trim" "toggle"; }
+    Mod+G       { spawn "bash" "/home/viii_fn/.local/bin/qsctl" "gallery" "toggle"; }
+    Mod+N       { spawn "bash" "/home/viii_fn/.local/bin/qsctl" "notes" "toggle"; }
+    Mod+Shift+N { spawn "bash" "/home/viii_fn/.local/bin/qsctl" "notes" "daily"; }
+    Mod+H       { spawn "bash" "/home/viii_fn/.local/bin/qsctl" "weather" "toggle"; }
+    Mod+L       { spawn "/home/viii_fn/.local/bin/viii-lock" "lock"; }
+
+    // Screenshots (your own scripts)
+    Print        { spawn "bash" "/home/viii_fn/.local/bin/screenshot"; }
+    Shift+Print  { spawn "bash" "/home/viii_fn/.local/bin/screenshot" "region"; }
+    Ctrl+Print   { spawn "bash" "/home/viii_fn/.local/bin/screenshot" "output"; }
+
+    // Volume / brightness / media (work even when locked)
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "wpctl" "set-volume" "-l" "1.0" "@DEFAULT_AUDIO_SINK@" "5%+"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "5%-"; }
+    XF86AudioMute        allow-when-locked=true { spawn "wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle"; }
+    XF86MonBrightnessUp   allow-when-locked=true { spawn "brightnessctl" "set" "2%+"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "set" "2%-"; }
+    XF86AudioPlay { spawn "playerctl" "play-pause"; }
+    XF86AudioNext { spawn "playerctl" "next"; }
+    XF86AudioPrev { spawn "playerctl" "previous"; }
+
+    // ── niri navigation (new: there's no title bar to drag) ──
+    Mod+Left       { focus-column-left; }
+    Mod+Right      { focus-column-right; }
+    Mod+Up         { focus-window-up; }
+    Mod+Down       { focus-window-down; }
+    Mod+Home       { focus-column-first; }
+    Mod+End        { focus-column-last; }
+
+    Mod+Shift+Left  { move-column-left; }
+    Mod+Shift+Right { move-column-right; }
+
+    // Workspaces are vertical, one stack per monitor
+    Mod+Page_Up         { focus-workspace-up; }
+    Mod+Page_Down       { focus-workspace-down; }
+    Mod+Shift+Page_Up   { move-column-to-workspace-up; }
+    Mod+Shift+Page_Down { move-column-to-workspace-down; }
+
+    // Monitors
+    Mod+Ctrl+Left        { focus-monitor-left; }
+    Mod+Ctrl+Right       { focus-monitor-right; }
+    Mod+Shift+Ctrl+Left  { move-column-to-monitor-left; }
+    Mod+Shift+Ctrl+Right { move-column-to-monitor-right; }
+
+    // Stack two windows into one column / pull them apart
+    Mod+BracketLeft  { consume-or-expel-window-left; }
+    Mod+BracketRight { consume-or-expel-window-right; }
+
+    // Sizing
+    Mod+R       { switch-preset-column-width; }
+    Mod+Minus   { set-column-width "-10%"; }
+    Mod+Equal   { set-column-width "+10%"; }
+    Mod+Ctrl+F  { maximize-column; }
+    Mod+Shift+F { fullscreen-window; }
+    Mod+V       { toggle-window-floating; }
+
+    Mod+Z           { toggle-overview; }
+    Mod+Shift+Slash { show-hotkey-overlay; }
+
+    // Mouse wheel while holding Super
+    Mod+WheelScrollDown  cooldown-ms=150 { focus-workspace-down; }
+    Mod+WheelScrollUp    cooldown-ms=150 { focus-workspace-up; }
+    Mod+WheelScrollRight { focus-column-right; }
+    Mod+WheelScrollLeft  { focus-column-left; }
+    Mod+Shift+WheelScrollDown cooldown-ms=150 { focus-column-right; }
+    Mod+Shift+WheelScrollUp   cooldown-ms=150 { focus-column-left; }
+}
+
+// Quickshell windows that are normal (floating) windows
+window-rule {
+    match title="^Quick Settings$"
+    open-floating true
+    geometry-corner-radius 24
+    default-floating-position x=12 y=12 relative-to="top-right"
+}
+window-rule {
+    match title="^Music$"
+    open-floating true
+    geometry-corner-radius 28
+    default-floating-position x=12 y=10 relative-to="top-left"
+}
