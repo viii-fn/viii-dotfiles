@@ -1,5 +1,5 @@
 // File: ~/viii-shell-2/shell/NotchQuick.qml
-// Quick settings inside the notch: Wi-Fi, Bluetooth, speakers/TV, volume,
+// Quick settings inside the notch: Wi-Fi, Bluetooth, mic, speakers/TV, volume,
 // brightness, display scale. Replaces AudioPanel.qml and DpiWindow/DpiPanel.qml.
 // Loaded by Notch.qml, which sets `n`.
 import QtQuick
@@ -33,21 +33,66 @@ Item {
     readonly property var bt: Bluetooth.defaultAdapter
     readonly property bool btOn: bt !== null && bt.enabled
 
-    // ── Audio output (analog <-> HDMI, same card profiles as before) ──
+    // ── Microphone ──
+    // Pipewire only keeps `audio` (volume/muted) up to date for nodes we track.
+    readonly property var source: Pipewire.defaultAudioSource
+    PwObjectTracker { objects: root.source ? [root.source] : [] }
+    readonly property bool micMuted: source !== null && source.audio !== null && source.audio.muted
+    function toggleMic() {
+        if (source && source.audio) source.audio.muted = !source.audio.muted
+    }
+
+    // ── Audio output (analog <-> HDMI) ──
     readonly property string card: "alsa_card.pci-0000_00_1b.0"
+    readonly property string analogProfile: "output:analog-stereo+input:analog-stereo"
+    readonly property string hdmiProfile: "output:hdmi-stereo+input:analog-stereo"
     readonly property var sinks: Pipewire.nodes.values.filter(s => s.isSink && !s.isStream)
-    readonly property bool onHdmi: sink !== null && (sink.name || "").indexOf("hdmi") !== -1
     PwObjectTracker { objects: root.sinks }
+
+    function isHdmi(s) { return s !== null && (s.name || "").indexOf("hdmi") !== -1 }
+    readonly property bool onHdmi: isHdmi(sink)
+
+    // Is the HDMI profile actually usable right now? (false when nothing is plugged in.)
+    // This is the check the old code skipped: forcing an unavailable profile
+    // removes the analog sink and leaves you with no sound.
+    property bool hdmiAvail: false
+    Process {
+        id: cardQ
+        command: ["pactl", "-f", "json", "list", "cards"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const c = JSON.parse(text).find(x => x.name === root.card)
+                    const p = c && c.profiles ? c.profiles[root.hdmiProfile] : null
+                    root.hdmiAvail = !!p && (p.available === true || p.available === "yes")
+                } catch (e) { root.hdmiAvail = false }
+            }
+        }
+    }
+
+    property bool wantHdmi: false
     function toggleOutput() {
-        const profile = onHdmi ? "output:analog-stereo+input:analog-stereo"
-                               : "output:hdmi-stereo+input:analog-stereo"
-        Quickshell.execDetached(["pactl", "set-card-profile", card, profile])
+        wantHdmi = !onHdmi
+        // Refuse to switch TO hdmi unless the profile is available.
+        if (wantHdmi && !hdmiAvail) return
+        Quickshell.execDetached(["pactl", "set-card-profile", card, wantHdmi ? hdmiProfile : analogProfile])
         settle.restart()
     }
     Timer {
         id: settle
-        interval: 700
-        onTriggered: if (root.sinks.length > 0) Pipewire.preferredDefaultAudioSink = root.sinks[0]
+        interval: 900
+        onTriggered: {
+            // Pick the sink that matches what we asked for (not just sinks[0]).
+            const target = root.sinks.find(s => root.isHdmi(s) === root.wantHdmi)
+            if (target) {
+                Pipewire.preferredDefaultAudioSink = target
+            } else {
+                // The switch didn't produce the sink we wanted: go back to analog
+                // so you are never left without audio.
+                Quickshell.execDetached(["pactl", "set-card-profile", root.card, root.analogProfile])
+            }
+            cardQ.running = true
+        }
     }
 
     // ── Display scale ──
@@ -77,7 +122,7 @@ Item {
     }
     function setScale(v) { dpiScale = v; dpiApply.restart() }
 
-    Component.onCompleted: { wifiQ.running = true; dpiQ.running = true }
+    Component.onCompleted: { wifiQ.running = true; dpiQ.running = true; cardQ.running = true }
 
     ColumnLayout {
         anchors.fill: parent
@@ -95,21 +140,28 @@ Item {
                 model: [
                     { id: "wifi", glyph: "\uf1eb", label: "Wi-Fi" },
                     { id: "bt",   glyph: "\uf293", label: "Bluetooth" },
+                    { id: "mic",  glyph: "\uf130", label: "Mic" },
                     { id: "out",  glyph: "\uf025", label: "Output" }
                 ]
                 delegate: Glass {
                     id: tile
                     required property var modelData
-                    readonly property bool active: modelData.id === "wifi" ? root.wifiOn
-                                                 : (modelData.id === "bt" ? root.btOn : root.onHdmi)
-                    readonly property string sub: modelData.id === "wifi"
+                    readonly property string tid: modelData.id
+                    readonly property bool active: tid === "wifi" ? root.wifiOn
+                                                 : (tid === "bt" ? root.btOn
+                                                 : (tid === "mic" ? !root.micMuted : root.onHdmi))
+                    // The Output tile is inert when there is no HDMI to switch to.
+                    readonly property bool usable: tid !== "out" || root.onHdmi || root.hdmiAvail
+                    readonly property string sub: tid === "wifi"
                         ? (root.wifiOn ? (root.n && root.n.netSsid !== "" ? root.n.netSsid : "On") : "Off")
-                        : (modelData.id === "bt" ? (root.btOn ? "On" : "Off")
-                        : (root.onHdmi ? "TV (HDMI)" : "Speakers"))
+                        : (tid === "bt" ? (root.btOn ? "On" : "Off")
+                        : (tid === "mic" ? (root.micMuted ? "Muted" : "Live")
+                        : (root.onHdmi ? "TV (HDMI)" : "Speakers")))
                     Layout.fillWidth: true
                     Layout.preferredWidth: 1
                     Layout.preferredHeight: 62
                     radius: 18
+                    opacity: usable ? 1 : 0.45
                     color: active ? Qt.alpha(Theme.accent, 0.20)
                                   : (hit.containsMouse ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(1, 1, 1, 0.05))
                     border.color: active ? Theme.accent : Qt.rgba(1, 1, 1, 0.10)
@@ -120,7 +172,8 @@ Item {
                         spacing: 3
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: tile.modelData.glyph
+                            // crossed-out mic glyph while muted
+                            text: tile.tid === "mic" && root.micMuted ? "\uf131" : tile.modelData.glyph
                             color: tile.active ? Theme.accentHi : Theme.fgDim
                             font.family: root.mono; font.pixelSize: 16
                         }
@@ -138,10 +191,11 @@ Item {
                         id: hit
                         anchors.fill: parent
                         hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
+                        cursorShape: tile.usable ? Qt.PointingHandCursor : Qt.ArrowCursor
                         onClicked: {
-                            if (tile.modelData.id === "wifi") root.toggleWifi()
-                            else if (tile.modelData.id === "bt") { if (root.bt) root.bt.enabled = !root.bt.enabled }
+                            if (tile.tid === "wifi") root.toggleWifi()
+                            else if (tile.tid === "bt") { if (root.bt) root.bt.enabled = !root.bt.enabled }
+                            else if (tile.tid === "mic") root.toggleMic()
                             else root.toggleOutput()
                         }
                     }

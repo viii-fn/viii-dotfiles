@@ -329,9 +329,7 @@ hl.bind(mainMod .. " + SHIFT + P", hl.dsp.exec_cmd("nwg-displays"))             
 hl.bind(mainMod .. " + space", hl.dsp.exec_cmd(qsctl .. "omni toggle"))
 hl.bind(mainMod .. " + T", hl.dsp.exec_cmd("bash " .. bin .. "/viii-theme --picker"))
 hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exec_cmd(qsctl .. "music toggle"))  -- was Super+M (Super+M now EXITS)
-hl.bind(mainMod .. " + I", hl.dsp.exec_cmd(qsctl .. "quicksettings toggle"))
-hl.bind(mainMod .. " + O", hl.dsp.exec_cmd(qsctl .. "audio toggle"))
-hl.bind(mainMod .. " + SHIFT + J", hl.dsp.exec_cmd(qsctl .. "dpi toggle"))    -- was Super+J
+hl.bind(mainMod .. " + I", hl.dsp.exec_cmd(qsctl .. "notch toggle quick"))
 hl.bind(mainMod .. " + U", hl.dsp.exec_cmd(qsctl .. "screentime toggle"))
 hl.bind(mainMod .. " + SHIFT + C", hl.dsp.exec_cmd(qsctl .. "trim toggle"))   -- was Super+C
 hl.bind(mainMod .. " + G", hl.dsp.exec_cmd(qsctl .. "gallery toggle"))
@@ -415,24 +413,6 @@ hl.window_rule({
     float = true,
 })
 
--- Quickshell panels that are normal windows: float them so they don't become columns in the strip.
-hl.window_rule({
-    name  = "qs-quicksettings",
-    match = { title = "^Quick Settings$" },
-    float = true,
-    move  = { "monitor_w - window_w - 12", "12" },
-})
-hl.window_rule({
-    name  = "qs-music",
-    match = { title = "^Music$" },
-    float = true,
-    move  = { "12", "10" },
-})
-hl.window_rule({
-    name  = "qs-omnilauncher",
-    match = { title = "^Launcher$" },
-    float = true,
-})
-
 -- Border colors generated from the active palette (silently skipped if the file doesn't exist yet)
 hl.bind("SUPER + L", hl.dsp.exec_cmd("hyprlock"))
+hl.config({ general = { col = { active_border = { colors = { "rgba(a8a8a8ee)", "rgba(e0e0e0ee)" }, angle = 45 }, inactive_border = "rgba(4a4a4aaa)" } } }) -- viii-theme:wallpaper
