@@ -1,0 +1,45 @@
+#!/bin/bash
+# File: ~/.local/bin/clean-caches
+# Clears npm, pnpm and ~/.cache, but never touches .NET / NuGet.
+# Usage: clean-caches --dry   (only shows what would be removed)
+#        clean-caches         (actually removes it)
+
+# Folder names inside ~/.cache that must survive.
+# "viii" holds your lock screen profile picture (pfp.png).
+KEEP=(dotnet NuGet nuget viii)
+CACHE="$HOME/.cache"
+
+dry=0
+[ "$1" = "--dry" ] && dry=1
+
+# run = execute the command, or just print it in dry mode
+run() {
+  if [ "$dry" = 1 ]; then echo "[dry] $*"; else "$@"; fi
+}
+
+before=$(du -sm "$CACHE" 2>/dev/null | cut -f1)
+
+# npm cache (~/.npm)
+if command -v npm >/dev/null; then
+  run npm cache clean --force
+fi
+
+# pnpm: remove the whole content store, not just unused packages
+if command -v pnpm >/dev/null; then
+  store="$(pnpm store path 2>/dev/null)"
+  if [ -n "$store" ] && [ -d "$store" ]; then
+    run rm -rf "$store"
+  fi
+fi
+
+# everything else directly inside ~/.cache, except the KEEP list
+args=()
+for k in "${KEEP[@]}"; do args+=(! -name "$k"); done
+
+if [ "$dry" = 1 ]; then
+  find "$CACHE" -mindepth 1 -maxdepth 1 "${args[@]}" -print
+else
+  find "$CACHE" -mindepth 1 -maxdepth 1 "${args[@]}" -exec rm -rf {} +
+  after=$(du -sm "$CACHE" 2>/dev/null | cut -f1)
+  echo "~/.cache: ${before} MB -> ${after} MB"
+fi

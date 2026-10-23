@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Usage: quicksettings-report status | bt
+case "${1:-status}" in
+status)
+    wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{printf "VOL\t%d\t%d\n", $2*100+0.5, ($3=="[MUTED]")}'
+    wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null | awk '{printf "MIC\t%d\n", ($3=="[MUTED]")}'
+    brightnessctl -m 2>/dev/null | head -1 | awk -F, '{gsub("%","",$4); printf "BRI\t%s\n", $4}'
+    for b in /sys/class/power_supply/BAT*; do
+        [ -d "$b" ] && printf 'BAT\t%s\t%s\n' "$(cat "$b/capacity")" "$(cat "$b/status")" && break
+    done
+    printf 'WIFI\t%s\n' "$(nmcli radio wifi 2>/dev/null)"
+    bluetoothctl show 2>/dev/null | awk '/Powered:/{printf "BT\t%s\n", $2}'
+    printf 'PROF\t%s\n' "$(powerprofilesctl get 2>/dev/null)"
+    ;;
+bt)
+    conn=$(bluetoothctl devices Connected 2>/dev/null | awk '{print $2}')
+    bluetoothctl devices Paired 2>/dev/null | while read -r _ mac name; do
+        c=0
+        grep -qx "$mac" <<<"$conn" && c=1
+        printf 'BTD\t%s\t%s\t%s\n' "$mac" "$c" "$name"
+    done
+    ;;
+esac

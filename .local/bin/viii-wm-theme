@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# viii-wm-theme: regenerate the labwc theme from a theme's palette.json
+# usage: viii-wm-theme atmos     (or a path to any palette.json)
+#
+# Writes two things:
+#   1) ~/.config/labwc/themerc-override   (colors, button size, titlebar)
+#   2) the pill-shaped SVG buttons (iconify + close), colored from the palette
+#
+# Optional env:
+#   VIII_CLOSE_GLYPH=tilde|x     glyph on the close half of the pill (default: tilde)
+#   VIII_BUTTON_DIR=<dir>        where the SVGs go (default: the Vent theme dir below)
+set -euo pipefail
+
+THEMES="$HOME/viii-shell-2/themes"
+OUT="$HOME/.config/labwc/themerc-override"
+BUTTON_DIR="${VIII_BUTTON_DIR:-$HOME/.local/share/themes/Vent/openbox-3}"
+CLOSE_GLYPH="${VIII_CLOSE_GLYPH:-tilde}"
+VIII_MIN_GLYPH="${VIII_MIN_GLYPH:-xiao}"   # xiao (小) | xia (下) | dash (一)
+BORDER_WIDTH=1   # set to 0 for no window border
+# Titlebar opacity as a 2-digit hex alpha. 85% transparent = 15% opaque = 0x26.
+# (0.15 * 255 = 38 = 0x26). For 85% opaque instead, use D9.
+TITLE_ALPHA="${VIII_TITLE_ALPHA:-D9}"
+
+name="${1:?usage: viii-wm-theme <theme-name | path/to/palette.json>}"
+if [ -f "$name" ]; then pal="$name"; else pal="$THEMES/$name/palette.json"; fi
+[ -f "$pal" ] || { echo "no palette: $pal" >&2; exit 1; }
+
+# read one "key": "#rrggbb" value out of the flat JSON, no jq needed
+get() { sed -n "s/.*\"$1\": *\"\(#[0-9a-fA-F]\{6,8\}\)\".*/\1/p" "$pal" | head -n1; }
+need() {
+  local v; v="$(get "$1")"
+  [ -n "$v" ] || { echo "palette missing '$1' in $pal" >&2; exit 1; }
+  printf '%s' "$v"
+}
+# optional key with a fallback
+opt() { local v; v="$(get "$1")"; printf '%s' "${v:-$2}"; }
+
+BG=$(need bg);           SURFACE=$(need surface);   SURFACE_HI=$(need surfaceHi)
+LINE=$(need line);       FG=$(need fg);             FG_DIM=$(need fgDim)
+ACCENT=$(need accent);   ACCENT_HI=$(need accentHi)
+WM_ACTIVE=$(need wmActive); WM_INACTIVE=$(need wmInactive)
+
+# Pill colors: use palette keys if present, otherwise derive from the theme
+PILL=$(opt pill "$ACCENT")                  # active pill fill
+PILL_HI=$(opt pillHi "$ACCENT_HI")          # active pill, hovered
+PILL_OFF=$(opt pillInactive "$LINE")        # inactive pill fill
+PILL_OFF_HI=$(opt pillInactiveHi "$FG_DIM") # inactive pill, hovered
+GLYPH=$(opt glyph "$BG")                    # dash / tilde, dark on the pill
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# micro colorscheme, generated from the same palette
+# micro reads ~/.config/micro/colorschemes/<name>.micro
+# format: color-link <group> "<fg>,<bg>"
+# ---------------------------------------------------------------------------
+MICRO_DIR="$HOME/.config/micro"
+mkdir -p "$MICRO_DIR/colorschemes"
+cat > "$MICRO_DIR/colorschemes/viii.micro" <<EOF
+color-link default "$FG,$BG"
+color-link comment "$FG_DIM"
+color-link identifier "$ACCENT_HI"
+color-link constant "$ACCENT"
+color-link constant.string "$ACCENT"
+color-link statement "$ACCENT_HI"
+color-link symbol "$FG"
+color-link preproc "$ACCENT"
+color-link type "$ACCENT_HI"
+color-link special "$ACCENT"
+color-link underlined "underline $ACCENT"
+color-link error "bold #ff5555"
+color-link todo "bold $ACCENT_HI"
+color-link statusline "$FG,$SURFACE"
+color-link tabbar "$FG_DIM,$SURFACE"
+color-link tabbar.active "$BG,$ACCENT"
+color-link line-number "$FG_DIM,$BG"
+color-link current-line-number "$ACCENT_HI,$BG"
+color-link gutter-error "#ff5555,$BG"
+color-link gutter-warning "$ACCENT,$BG"
+color-link cursor-line "$SURFACE"
+color-link divider "$LINE"
+color-link indent-char "$LINE,$BG"
+color-link color-column "$SURFACE"
+color-link selection "$FG,$SURFACE_HI"
+EOF
+
+# point micro at it (create settings.json if missing)
+MS="$MICRO_DIR/settings.json"
+if [ -f "$MS" ] && grep -q '"colorscheme"' "$MS"; then
+  sed -i 's/"colorscheme": *"[^"]*"/"colorscheme": "viii"/' "$MS"
+elif [ -f "$MS" ]; then
+  sed -i '0,/{/s/{/{\n    "colorscheme": "viii",/' "$MS"
+else
+  printf '{\n    "colorscheme": "viii"\n}\n' > "$MS"
+fi
+"$HOME/.local/bin/viii-hypr-border" "$pal" || true
+"$HOME/.local/bin/viii-app-theme" "$pal"
+echo "labwc theme set from: $pal"

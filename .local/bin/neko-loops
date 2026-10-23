@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""
+neko-loops - give EVERY theme the neko wallpaper as an animated loop.gif, recolored to that
+theme's own palette.json. One command, all themes.
+
+  neko-loops                      # all themes in ~/viii-shell-2/themes
+  neko-loops --preview sheet.png  # just make a contact sheet of the recolors, write no gifs
+  neko-loops --only redcell,wood  # only some themes
+  neko-loops --skip monochrome    # all except some
+  neko-loops --mode hue           # alternative recolor (rotates the hue instead of a gradient map)
+
+How it works
+  1. takes the neko wallpaper (themes/neko/bg.jpg by default) as the picture
+  2. recolors it with the theme's palette (bg, surface, accent, accentHi, fg)
+  3. adds the same twinkling sparkles + drifting specks, in that theme's colors
+  4. writes themes/<name>/loop.gif; an existing loop.gif is kept as loop.old.gif
+The neko theme itself keeps the original colors. Your bg.* files are never touched.
+
+Install:  install -Dm755 neko_loops.py ~/.local/bin/neko-loops
+Needs Pillow:  sudo pacman -S python-pillow   (or: pip install pillow)
+"""
+import argparse, colorsys, json, math, random, shutil, subprocess, sys, time
+from pathlib import Path
+from PIL import Image, ImageChops, ImageDraw, ImageOps
+
+Q = getattr(Image, "Quantize", Image)
+D = getattr(Image, "Dither", Image)
+HOME = Path.home()
+DEFAULT_THEMES = HOME / "viii-shell-2" / "themes"
+BG_NAMES = ["bg.jpg", "bg.jpeg", "bg.png", "bg.webp"]
+
+# ------------------------------------------------------------------ colors
+def hex_rgb(h, default):
+    if not isinstance(h, str):
+        return default
+    h = h.strip().lstrip("#")
+    if len(h) in (3, 4):
+        h = "".join(c * 2 for c in h[:3])
+    if len(h) >= 6:
+        try:
+            return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+        except ValueError:
+            pass
+    return default
+
+def load_palette(path):
+    try:
+        p = json.loads(Path(path).read_text())
+    except Exception:
+        p = {}
+    return {
+        "bg": hex_rgb(p.get("bg"), (16, 20, 28)),
+        "surface": hex_rgb(p.get("surface"), (28, 36, 58)),
+        "fg": hex_rgb(p.get("fg"), (229, 229, 229)),
+        "accent": hex_rgb(p.get("accent"), (59, 130, 246)),
+        "accentHi": hex_rgb(p.get("accentHi") or p.get("accent"), (96, 165, 250)),
+    }
+
+def lum(c):
+    return 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+
+def lerp(a, b, t):
+    return tuple(round(a[i] + (b[i] - a[i]) * t) for i in range(3))
+
+WHITE_RGB, BLACK_RGB = (255, 255, 255), (0, 0, 0)
+
+# ---------------------------------------------------------------- recoloring
+def recolor_gradient(img, pal):
+    """Gradient map: dark -> light pixels of the picture get the theme's dark -> light colors."""
+    cols = sorted([pal["bg"], pal["surface"], pal["accent"], pal["accentHi"], pal["fg"]], key=lum)
+    stops = [lerp(cols[0], BLACK_RGB, 0.35)] + cols + [lerp(cols[-1], WHITE_RGB, 0.35)]
+    lut = [[], [], []]
+    for i in range(256):
+        t = i / 255 * (len(stops) - 1)
+        k = min(int(t), len(stops) - 2)
+        c = lerp(stops[k], stops[k + 1], t - k)
+        for ch in range(3):
+            lut[ch].append(c[ch])
+    g = ImageOps.autocontrast(img.convert("L"), cutoff=1)
+    return Image.merge("RGB", [g.point(lut[0]), g.point(lut[1]), g.point(lut[2])])
+
+def recolor_hue(img, pal):
+    """Rotate the picture's main hue onto the theme's accent hue (and match its saturation)."""
+    h, s, v = img.convert("HSV").split()
+    mask = s.point(lambda x: 255 if x > 60 else 0)
+    hist = h.histogram(mask)
+    dom = max(range(256), key=lambda i: hist[i]) if sum(hist) else 0
+    ar, ag, ab = (x / 255 for x in pal["accent"])
+    th, ts, _ = colorsys.rgb_to_hsv(ar, ag, ab)
+    shift = int(round(th * 255)) - dom
+    sf = min(1.2, ts / 0.55)
+    h = h.point([(i + shift) % 256 for i in range(256)])
+    s = s.point([min(255, int(i * sf)) for i in range(256)])
+    return Image.merge("HSV", (h, s, v)).convert("RGB")
+
+# ------------------------------------------------------------------ the gif
+def build_loop(img, out, extras, W, H, fps, N, n_sparkles, n_floaters, seed):
+    random.seed(seed)
+    s = W / 1366.0
+    pal_img = img.quantize(colors=250, method=Q.MEDIANCUT)
+    base = img.quantize(palette=pal_img, dither=D.FLOYDSTEINBERG)  # dithered once, same in every frame
+    pal = (pal_img.getpalette() or [])[:250 * 3]
+    pal += [0] * (250 * 3 - len(pal))
+    for rgb in extras + [(0, 0, 0)]:
+        pal += list(rgb)
+    base.putpalette(pal)
+    WHITE, SOFT, WARM, LEAF, LEAF2, TRANS = 250, 251, 252, 253, 254, 255
+    th = max(1, round(s))
+
+    stars = [(random.randint(int(20 * s), W - int(20 * s)), random.randint(int(20 * s), H - int(20 * s)),
+              random.randrange(24)) for _ in range(n_sparkles)]
+    floaters = [dict(x=random.uniform(0, W), y=random.uniform(0, H),
+                     rx=random.uniform(8, 34) * s, ry=random.uniform(8, 34) * s,
+                     cyc=random.choice([1, 1, 2]), ph=random.uniform(0, 6.283),
+                     size=random.choice([2, 3, 3, 4]) * s, c=random.choice([SOFT, LEAF, LEAF2, WARM]))
+                for _ in range(n_floaters)]
+
+    frames = []
+    for f in range(N):
+        fr = base.copy()
+        d = ImageDraw.Draw(fr)
+        for x, y, p in stars:                      # twinkling stars, two twinkles per loop
+            t = ((f + p) % 24) / 24.0
+            r = round(math.sin(math.pi * t) ** 2 * 9 * s)
+            if r >= 1:
+                col = WHITE if r >= 3 * s else SOFT
+                d.rectangle([x - r, y, x + r, y + th - 1], fill=col)
+                d.rectangle([x, y - r, x + th - 1, y + r], fill=col)
+                if r >= 6 * s:
+                    d.rectangle([x - 1, y - 1, x + th, y + th], fill=WHITE)
+        for q in floaters:                         # specks drifting in small loops (seamless)
+            ang = 2 * math.pi * f / N
+            x = q["x"] + q["rx"] * math.cos(ang + q["ph"])
+            y = q["y"] + q["ry"] * math.sin(q["cyc"] * ang + q["ph"])
+            sz = max(1, round(q["size"]))
+            d.rectangle([int(x), int(y), int(x) + sz - 1, int(y) + sz - 1], fill=q["c"])
+        frames.append(fr)
+
+    # store only what changes: pixels equal to the previous frame become transparent
+    as_L = lambda im: Image.frombytes("L", im.size, im.tobytes())
+    clear = Image.new("L", (W, H), TRANS)
+    out_frames = [frames[0]]
+    for i in range(1, len(frames)):
+        changed = ImageChops.difference(as_L(frames[i]), as_L(frames[i - 1])).point(lambda v: 255 if v else 0)
+        dp = Image.frombytes("P", (W, H), Image.composite(as_L(frames[i]), clear, changed).tobytes())
+        dp.putpalette(pal)
+        out_frames.append(dp)
+    out_frames[0].save(out, save_all=True, append_images=out_frames[1:], duration=round(1000 / fps),
+                       loop=0, optimize=False, disposal=1, transparency=TRANS)
+    if shutil.which("gifsicle"):
+        subprocess.run(["gifsicle", "-O3", "--lossy=30", str(out), "-o", str(out)], stderr=subprocess.DEVNULL)
+
+def theme_extras(pal):
+    return [lerp(pal["fg"], WHITE_RGB, 0.55), lerp(pal["accentHi"], WHITE_RGB, 0.45),
+            lerp(pal["accentHi"], WHITE_RGB, 0.70), pal["accentHi"], pal["accent"]]
+
+ORIGINAL_EXTRAS = [(255, 255, 255), (236, 255, 226), (255, 250, 214), (205, 245, 190), (170, 225, 150)]
+
+def backup(path):
+    if not path.exists():
+        return None
+    dest = path.with_name("loop.old.gif")
+    if dest.exists():
+        dest = path.with_name(f"loop.old-{time.strftime('%Y%m%d-%H%M%S')}.gif")
+    shutil.move(str(path), str(dest))
+    return dest
+
+# --------------------------------------------------------------------- main
+def main():
+    ap = argparse.ArgumentParser(description="Give every theme the neko wallpaper as a recolored, animated loop.gif.")
+    ap.add_argument("--themes", default=str(DEFAULT_THEMES), help="themes folder (default ~/viii-shell-2/themes)")
+    ap.add_argument("--source", help="picture to use (default: bg.* inside the neko theme folder)")
+    ap.add_argument("--only", help="comma-separated theme names to process")
+    ap.add_argument("--skip", help="comma-separated theme names to leave alone")
+    ap.add_argument("--mode", choices=["gradient", "hue"], default="gradient",
+                    help="gradient: map the picture through the palette (default). hue: rotate hues to the accent.")
+    ap.add_argument("--recolor-source", action="store_true", help="also recolor the neko theme itself")
+    ap.add_argument("--preview", metavar="PNG", help="write a contact sheet of the recolored stills and stop")
+    ap.add_argument("--size", default="1366x768", help="output size WxH (match your screen)")
+    ap.add_argument("--fps", type=int, default=12)
+    ap.add_argument("--frames", type=int, default=48)
+    ap.add_argument("--sparkles", type=int, default=28)
+    ap.add_argument("--floaters", type=int, default=14)
+    ap.add_argument("--seed", type=int, default=7)
+    a = ap.parse_args()
+
+    themes_dir = Path(a.themes).expanduser()
+    if a.source:
+        src = Path(a.source).expanduser()
+    else:
+        src = next((themes_dir / "neko" / n for n in BG_NAMES if (themes_dir / "neko" / n).is_file()), None)
+    if not src or not src.is_file():
+        sys.exit("Can't find the neko picture. Pass it with --source /path/to/bg.jpg")
+    source_theme = src.parent.name
+
+    W, H = (int(v) for v in a.size.lower().split("x"))
+    only = {x.strip() for x in a.only.split(",")} if a.only else None
+    skip = {x.strip() for x in a.skip.split(",")} if a.skip else set()
+    names = sorted(d.name for d in themes_dir.iterdir() if (d / "palette.json").is_file())
+    names = [n for n in names if (only is None or n in only) and n not in skip]
+    if not names:
+        sys.exit(f"No matching theme folders with a palette.json in {themes_dir}")
+
+    original = ImageOps.fit(Image.open(src).convert("RGB"), (W, H), Image.LANCZOS)
+    recolor = recolor_gradient if a.mode == "gradient" else recolor_hue
+
+    def picture_for(name):
+        pal = load_palette(themes_dir / name / "palette.json")
+        keep = (name == source_theme and not a.recolor_source)
+        return (original, ORIGINAL_EXTRAS) if keep else (recolor(original, pal), theme_extras(pal))
+
+    if a.preview:
+        tw, th_ = 400, 225
+        cols = 3
+        rows = math.ceil(len(names) / cols)
+        sheet = Image.new("RGB", (cols * tw, rows * (th_ + 22)), (20, 20, 20))
+        dd = ImageDraw.Draw(sheet)
+        for i, n in enumerate(names):
+            pic, _ = picture_for(n)
+            x, y = (i % cols) * tw, (i // cols) * (th_ + 22)
+            sheet.paste(pic.resize((tw - 6, th_ - 2), Image.LANCZOS), (x + 3, y + 1))
+            dd.text((x + 8, y + th_ + 4), n, fill=(230, 230, 230))
+        Path(a.preview).expanduser().parent.mkdir(parents=True, exist_ok=True)
+        sheet.save(Path(a.preview).expanduser())
+        print(f"preview saved: {Path(a.preview).expanduser()}  (no gifs were written)")
+        return
+
+    print(f"picture: {src}   mode: {a.mode}   size: {W}x{H}\n")
+    for i, n in enumerate(names, 1):
+        t0 = time.time()
+        pic, extras = picture_for(n)
+        out = themes_dir / n / "loop.gif"
+        old = backup(out)
+        build_loop(pic, out, extras, W, H, a.fps, a.frames, a.sparkles, a.floaters, a.seed)
+        note = f"  (previous kept as {old.name})" if old else ""
+        print(f"[{i}/{len(names)}] {n:<14} {out.stat().st_size / 1e6:5.1f} MB  {time.time() - t0:4.1f}s{note}")
+    print("\nDone. Open the picker to see them, or run: viii-theme <name>")
+
+if __name__ == "__main__":
+    main()

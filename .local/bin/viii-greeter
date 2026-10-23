@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# File: ~/.local/bin/viii-greeter
+#
+#   viii-greeter install    copy the login screen to /etc/greetd and write greetd's config
+#   viii-greeter images     sync profile image, wallpaper and the ACTIVE THEME's colors to the login screen
+#                           (run it after changing theme, profile image or wallpaper)
+#
+# It does NOT enable greetd. That step is yours (see the commands printed by `install`).
+# The greeter runs as another user and can't read your home folder, so everything it
+# needs is copied to /etc/greetd/viii-greeter.
+
+set -euo pipefail
+
+src="$HOME/viii-shell-2/greeter"
+dst="/etc/greetd/viii-greeter"
+wm="/etc/greetd/viii-labwc"
+lockcfg="$HOME/.config/viii-lock"
+
+images() {
+    # refresh the palette copy from the active theme first
+    bash "$HOME/.local/bin/viii-lock" palette || true
+    for f in avatar wallpaper palette.json; do
+        if [[ -f "$lockcfg/$f" ]]; then
+            sudo install -Dm644 "$lockcfg/$f" "$dst/$f"
+        else
+            sudo rm -f -- "$dst/$f"
+        fi
+    done
+    echo "Login screen images and colors synced."
+}
+
+install_all() {
+    command -v greetd >/dev/null || { echo "greetd is not installed: sudo pacman -S greetd" >&2; exit 1; }
+    [[ -f "$src/shell.qml" && -f "$src/rc.xml" ]] || { echo "Missing $src/shell.qml or rc.xml" >&2; exit 1; }
+
+    sudo install -d -m755 "$dst" "$wm"
+    sudo install -m644 "$src/shell.qml" "$dst/shell.qml"
+    sudo install -m644 "$src/rc.xml" "$wm/rc.xml"
+    printf '%s\n' "$USER" | sudo tee "$dst/user" >/dev/null
+    sudo chmod 644 "$dst/user"
+    images
+
+    # keep the original config once
+    [[ -f /etc/greetd/config.toml ]] && sudo cp -n /etc/greetd/config.toml /etc/greetd/config.toml.bak
+
+    sudo tee /etc/greetd/config.toml >/dev/null <<'EOF'
+[terminal]
+vt = 1
+
+[default_session]
+# a tiny labwc hosts the login screen; when the login screen quits, that labwc exits too
+command = "labwc -C /etc/greetd/viii-labwc -s 'qs -p /etc/greetd/viii-greeter; labwc --exit'"
+user = "greeter"
+EOF
+
+    cat <<EOF
+
+Installed. To switch from the TTY login to the login screen:
+
+  sudo systemctl enable greetd
+  sudo reboot
+
+If anything goes wrong: press Ctrl+Alt+F2, log in there and run
+
+  sudo systemctl disable greetd
+  sudo systemctl enable getty@tty1
+  sudo reboot
+
+EOF
+}
+
+case "${1:-}" in
+    install) install_all ;;
+    images)  images ;;
+    *) sed -n '3,10p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 1 ;;
+esac

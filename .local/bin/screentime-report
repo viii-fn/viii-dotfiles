@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+DIR="$HOME/.local/share/screentime"
+range=${1:-1}
+offset=${2:-0}   # 0 = start from today, 1 = start from yesterday
+weeks=${3:-17}                  # heatmap width, passed in by the panel
+HIST_DAYS=$((weeks * 7 + 7))    # derived, so there's nothing to keep in sync
+
+for ((i=6; i>=0; i--)); do
+    d=$(date -d "-$i day" +%F)
+    secs=0
+    [ -f "$DIR/$d.log" ] && secs=$(awk -F'|' '{ s += ($2 == "" ? 10 : $2) } END { print s + 0 }' "$DIR/$d.log")
+    printf 'DAY\t%s\t%s\n' "$d" "$secs"
+done
+
+# Read `range` days of logs, starting `offset` days back
+for ((i=offset; i<offset+range; i++)); do
+    f="$DIR/$(date -d "-$i day" +%F).log"
+    [ -f "$f" ] && cat "$f"
+done | awk -F'|' '{ t[$1] += ($2 == "" ? 10 : $2) } END { for (a in t) printf "APP\t%s\t%d\n", a, t[a] }' | sort -t$'\t' -k3,3nr | head -8
+
+# Long history for the heatmap: one HIST line per day, single awk pass over all logs
+cut=$(date -d "-$HIST_DAYS day" +%F)
+shopt -s nullglob
+files=("$DIR"/*.log)
+if [ ${#files[@]} -gt 0 ]; then
+    awk -F'|' -v cut="$cut" '
+        {
+            f = FILENAME
+            sub(/.*\//, "", f)
+            sub(/\.log$/, "", f)
+            if (f ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ && f >= cut)
+                t[f] += ($2 == "" ? 10 : $2)
+        }
+        END { for (d in t) printf "HIST\t%s\t%d\n", d, t[d] }
+    ' "${files[@]}"
+fi

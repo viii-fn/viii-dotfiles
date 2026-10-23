@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+if [[ "${1:-}" == [!-]* ]]; then "$HOME/.local/bin/viii-wm-theme" "$1" >/dev/null 2>>"$HOME/.cache/viii-wm-theme.log" || true; fi
+# File: ~/.local/bin/viii-theme
+# Usage: viii-theme <name>     switch to the theme in ~/viii-shell-2/themes/<name>
+#        viii-theme --restore  re-apply the last theme (used at login, no fade)
+#        viii-theme --list     print every theme folder that has a palette.json
+#        viii-theme --picker   open the theme picker (run it again to close it)
+#        viii-theme --scan     (used by the picker) one JSON line per theme folder
+#        viii-theme --anim on|off|auto
+#                              animated wallpaper: always / never / only on AC power
+#                              (default auto). Re-applies the current theme.
+#
+# A theme folder with NO bg.* / loop.gif has no wallpaper of its own: awww is
+# stopped so Hyprland's built-in wallpaper shows through, and the line tagged
+# "viii-theme:wallpaper" is removed from hyprland.lua. A theme WITH a wallpaper
+# gets that line (re)added.
+set -u
+
+ROOT="$HOME/viii-shell-2"
+THEMES="$ROOT/themes"
+SHELL_DIR="$ROOT/shell"
+STATE="$HOME/.local/state/viii-shell"
+CACHE="$HOME/.cache/viii-shell"
+
+# The window-border line (same gradient viii-hypr-border writes) is appended to
+# hyprland.lua when the theme HAS a wallpaper and deleted again when it has none.
+# It is found by its marker comment at the end of the line.
+HYPR_CONF="$HOME/.config/hypr/hyprland.lua"
+HYPR_MARK="-- viii-theme:wallpaper"
+BORDER_ANGLE="${VIII_BORDER_ANGLE:-45}"
+BORDER_ALPHA="${VIII_BORDER_ALPHA:-ee}"
+
+# Wallpaper transition. Override per call, e.g.  VIII_TRANSITION=wave viii-theme <n>
+#   grow | outer | wave | wipe | center | left | right | top | bottom | fade | any | random
+TRANSITION="${VIII_TRANSITION:-fade}"
+FADE_SECS="${VIII_TRANSITION_SECS:-1.1}"     # transition length in seconds
+TRANS_FPS="${VIII_TRANSITION_FPS:-30}"       # 30 is plenty for a fade and much lighter than 60
+
+# Animated wallpaper (loop.gif) settings
+ANIM="${VIII_ANIMATE:-$(cat "$STATE/animate" 2>/dev/null || echo auto)}"   # on | off | auto
+GIF_FPS="${VIII_GIF_FPS:-12}"                # cap the loop at this many frames per second
+mkdir -p "$STATE" "$CACHE"
+
+# awww is the new name of swww; use whichever is installed.
+WP=awww
+command -v awww >/dev/null 2>&1 || WP=swww
+
+list_themes() {
+  for d in "$THEMES"/*/; do
+    [ -f "${d}palette.json" ] && basename "$d"
+  done
+}
+
+# True when the laptop is plugged in (or when there is no battery info at all).
+on_ac() {
+  local f found=0
+  for f in /sys/class/power_supply/*/online; do
+    [ -r "$f" ] || continue
+    found=1
+    [ "$(cat "$f")" = 1 ] && return 0
+  done
+  [ "$found" = 0 ]
+}
+
+# Should the wallpaper animate right now?
+animate_ok() {
+  case "$ANIM" in
+    on)  return 0 ;;
+    off) return 1 ;;
+    *)   on_ac ;;
+  esac
+}
+
+# Make a lighter copy of loop.gif once and cache it (rebuilt only when the
+# source changes): frame rate capped at GIF_FPS (never raised), palette tuned,
+# no dithering so pixel art stays crisp. Prints the file to use.
+optimize_gif() {   # $1 = source gif, $2 = theme name
+  local src="$1" out="$CACHE/$2.${GIF_FPS}fps.gif" rate limit vf
+  if { [ ! -s "$out" ] || [ "$src" -nt "$out" ]; } && command -v ffmpeg >/dev/null 2>&1; then
+    limit=""
+    if command -v ffprobe >/dev/null 2>&1; then
+      rate="$(ffprobe -v error -select_streams v:0 -show_entries stream=avg_frame_rate -of csv=p=0 "$src" 2>/dev/null)"
+      limit="$(printf '%s\n' "$rate" | awk -F/ -v t="$GIF_FPS" '{r=($2>0)?$1/$2:$1; if (r>t) print t}')"
+    else
+      limit="$GIF_FPS"
+    fi
+    vf="${limit:+fps=$limit,}split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=none"
+    ffmpeg -v error -y -i "$src" -vf "$vf" -loop 0 "$out" >/dev/null 2>&1 || rm -f "$out"
+  fi
+  if [ -s "$out" ]; then echo "$out"; else echo "$src"; fi
+}
+
+# First frame of a gif as a still image (used when animation is off and the
+# theme has no bg.* file). Prints the file to use.
+static_frame() {   # $1 = source gif, $2 = theme name
+  local src="$1" out="$CACHE/$2.static.png"
+  if { [ ! -s "$out" ] || [ "$src" -nt "$out" ]; } && command -v ffmpeg >/dev/null 2>&1; then
+    ffmpeg -v error -y -i "$src" -frames:v 1 "$out" >/dev/null 2>&1 || rm -f "$out"
+  fi
+  if [ -s "$out" ]; then echo "$out"; else echo "$src"; fi
+}
+
+# Decide which file becomes the wallpaper. Prints nothing when the theme has none.
+pick_wallpaper() {   # $1 = theme dir, $2 = theme name
+  local d="$1" f
+  if animate_ok && [ -f "$d/loop.gif" ]; then
+    optimize_gif "$d/loop.gif" "$2"; return
+  fi
+  for f in bg.jpg bg.jpeg bg.png bg.webp; do
+    [ -f "$d/$f" ] && { echo "$d/$f"; return; }
+  done
+  [ -f "$d/loop.gif" ] && static_frame "$d/loop.gif" "$2"
+}
+
+# --- helpers copied from viii-hypr-border (read colors out of the palette) ---
+# read one "key": "#rrggbb" value from the flat JSON
+pal_get() { sed -n "s/.*\"$1\": *\"\(#[0-9a-fA-F]\{6,8\}\)\".*/\1/p" "$PAL" | head -n1; }
+pal_opt() { local v; v="$(pal_get "$1")"; printf '%s' "${v:-$2}"; }
+# keep the last 6 hex digits, so an 8-digit #AARRGGBB value loses its alpha prefix
+pal_rgb() { local h="${1#\#}"; printf '%s' "${h: -6}"; }
+
+# Print the one-line border command for the current palette: gradient active
+# border (borderFrom -> borderTo, default wmActive -> accentHi), solid inactive.
+border_line() {
+  local accent from to off
+  accent="$(pal_opt accent "#6cb4ff")"
+  from="$(pal_opt borderFrom "$(pal_opt wmActive "$accent")")"
+  to="$(pal_opt borderTo "$(pal_opt accentHi "$accent")")"
+  off="$(pal_opt wmInactive "$(pal_opt line "#2b4560")")"
+  printf 'hl.config({ general = { col = { active_border = { colors = { "rgba(%s%s)", "rgba(%s%s)" }, angle = %s }, inactive_border = "rgba(%saa)" } } }) %s' \
+    "$(pal_rgb "$from")" "$BORDER_ALPHA" "$(pal_rgb "$to")" "$BORDER_ALPHA" "$BORDER_ANGLE" "$(pal_rgb "$off")" "$HYPR_MARK"
+}
+
+# Keep hyprland.lua in step with the theme: when the theme has a wallpaper, the
+# border line for ITS palette is the last line of the file (replaced on every
+# theme switch, since the colors differ); when it has none, the line is deleted
+# completely. Only touches the file (and reloads Hyprland) when it must change.
+sync_hypr_line() {   # $1 = "yes" when the theme has a wallpaper, anything else = no
+  [ -f "$HYPR_CONF" ] || return 0
+  local want="" cur=""
+  [ "$1" = yes ] && want="$(border_line)"
+  cur="$(grep -F -e "$HYPR_MARK" "$HYPR_CONF" || true)"   # -e: the marker starts with "--"
+  [ "$cur" = "$want" ] && return 0
+  sed -i '/viii-theme:wallpaper/d' "$HYPR_CONF"        # remove any old tagged line
+  if [ -n "$want" ]; then
+    # make sure the file ends in a newline before appending
+    [ -n "$(tail -c1 "$HYPR_CONF")" ] && printf '\n' >> "$HYPR_CONF"
+    printf '%s\n' "$want" >> "$HYPR_CONF"
+  fi
+  if pgrep -x Hyprland >/dev/null 2>&1; then
+    hyprctl reload >/dev/null 2>&1 || true
+  fi
+}
+
+INSTANT=0
+case "${1:-}" in
+  --list)
+    list_themes; exit 0 ;;
+  --scan)
+    printf '{"current":"%s"}\n' "$(cat "$STATE/current" 2>/dev/null || true)"
+    for d in "$THEMES"/*/; do
+      [ -f "${d}palette.json" ] || continue
+      # picker preview: loop.gif first when animation is allowed (it animates in
+      # the picker), otherwise the still images
+      if animate_ok; then order="loop.gif bg.jpg bg.jpeg bg.png bg.webp"
+      else order="bg.jpg bg.jpeg bg.png bg.webp loop.gif"; fi
+      bgfile=""
+      for f in $order; do
+        [ -f "${d}$f" ] && { bgfile="$f"; break; }
+      done
+      printf '{"name":"%s","bg":"%s","p":%s}\n' "$(basename "$d")" "$bgfile" "$(tr -d '\r\n' < "${d}palette.json")"
+    done
+    exit 0 ;;
+  --picker)
+    # toggle: if a picker is already open, ask it to close; otherwise start one
+    if qs -p "$ROOT/picker" ipc call picker dismiss >/dev/null 2>&1; then exit 0; fi
+    setsid -f qs -p "$ROOT/picker" >/dev/null 2>&1
+    exit 0 ;;
+  --anim)
+    case "${2:-}" in
+      on|off|auto) printf '%s\n' "$2" > "$STATE/animate"; ANIM="$2" ;;
+      *) echo "usage: viii-theme --anim on|off|auto" >&2; exit 1 ;;
+    esac
+    THEME="$(cat "$STATE/current" 2>/dev/null || true)"
+    [ -f "$THEMES/$THEME/palette.json" ] || THEME="$(list_themes | head -n1)" ;;
+  --restore)
+    INSTANT=1
+    THEME="$(cat "$STATE/current" 2>/dev/null || true)"
+    [ -f "$THEMES/$THEME/palette.json" ] || THEME="$(list_themes | head -n1)" ;;
+  "")
+    echo "usage: viii-theme <name> | --restore | --list | --picker | --anim on|off|auto" >&2; exit 1 ;;
+  *)
+    THEME="$1" ;;
+esac
+
+PAL="$THEMES/$THEME/palette.json"
+[ -f "$PAL" ] || { echo "viii-theme: no palette.json for '$THEME' in $THEMES" >&2; exit 1; }
+
+# 1. wallpaper: an animated loop.gif when animation is allowed (cached, frame
+#    rate capped), otherwise a still bg.jpg / bg.jpeg / bg.png / bg.webp.
+#    No wallpaper file at all: stop awww so Hyprland's own wallpaper shows.
+IMG="$(pick_wallpaper "$THEMES/$THEME" "$THEME")"
+if [ -n "$IMG" ]; then
+  if ! pgrep -x "${WP}-daemon" >/dev/null 2>&1; then
+    setsid -f "${WP}-daemon" >/dev/null 2>&1
+    for _ in $(seq 1 30); do "$WP" query >/dev/null 2>&1 && break; sleep 0.1; done
+  fi
+  TYPE="$TRANSITION"; [ "$INSTANT" = 1 ] && TYPE=none
+  extra=()
+  case "$TYPE" in
+    grow|outer) extra+=(--transition-pos 0.5,0.5) ;;
+    wave)       extra+=(--transition-angle 25 --transition-wave 40,20) ;;
+    wipe)       extra+=(--transition-angle 30) ;;
+  esac
+  # pixel-art loops (and stills taken from them) stay crisp with nearest-neighbour
+  case "$IMG" in *.gif|"$CACHE"/*) extra+=(--filter Nearest) ;; esac
+  # if a flag is rejected by your awww version, fall back to a plain fade so the wallpaper still changes
+  if "$WP" img "$IMG" --transition-type "$TYPE" --transition-duration "$FADE_SECS" \
+        --transition-fps "$TRANS_FPS" --transition-bezier .22,1,.36,1 \
+        ${extra[@]+"${extra[@]}"} >/dev/null 2>&1 \
+     || "$WP" img "$IMG" --transition-type fade --transition-duration 0.8 >/dev/null 2>&1; then
+    pkill -x swaybg >/dev/null 2>&1      # the old wallpaper tool is no longer needed
+  fi
+  sync_hypr_line yes
+else
+  pkill -x awww-daemon >/dev/null 2>&1
+  pkill -x swww-daemon >/dev/null 2>&1
+  sync_hypr_line no
+fi
+rm -f "$STATE/swaybg.pid"
+
+# 2. remember the theme (the shell reads this when it starts)
+printf '%s\n' "$THEME" > "$STATE/current"
+
+# 3. colors: a running shell is told over IPC (colors fade, no restart);
+#    otherwise start it. The old per-theme shells are stopped first.
+if qs -p "$SHELL_DIR" ipc call theme getTheme >/dev/null 2>&1; then
+  qs -p "$SHELL_DIR" ipc call theme setTheme "$THEME" >/dev/null 2>&1
+else
+  sleep 0.25
+  setsid -f qs -p "$SHELL_DIR" >/dev/null 2>&1
+fi

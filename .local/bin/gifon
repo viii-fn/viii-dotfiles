@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# ~/.local/bin/gifon
+# Re-enable all theme loops: inactive.gif -> loop.gif
+# Optional: pass a different themes folder as the first argument.
+
+themes="${1:-$HOME/viii-shell-2/themes}"
+
+for d in "$themes"/*/; do
+  if [[ -f "$d/inactive.gif" ]]; then
+    # -n = never overwrite an existing loop.gif
+    mv -n "$d/inactive.gif" "$d/loop.gif" && echo "on:  $(basename "$d")"
+  fi
+done
