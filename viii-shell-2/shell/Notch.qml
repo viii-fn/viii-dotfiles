@@ -183,6 +183,27 @@ PanelWindow {
     }
     readonly property bool playing: player !== null && player.isPlaying
 
+    // --- Beat: live spectrum from cava, only runs while music plays ---
+    // bands = [bass, mids, highs], each 0..1
+    property var bands: [0, 0, 0]
+    Process {
+        id: cava
+        running: win.playing
+        command: ["cava", "-p", Quickshell.shellPath("scripts/cava-notch.conf")]
+        stdout: SplitParser {
+            onRead: line => {
+                // "12;40;33;..." -> [0.12, 0.40, 0.33, ...]
+                const v = line.split(";").filter(s => s !== "").map(s => parseInt(s) / 100)
+                if (v.length < 3) return
+                // split the bars into thirds and average each third
+                const t = Math.floor(v.length / 3)
+                const avg = (a, b) => { let s = 0; for (let i = a; i < b; i++) s += v[i]; return s / Math.max(1, b - a) }
+                win.bands = [avg(0, t), avg(t, 2 * t), avg(2 * t, v.length)]
+            }
+        }
+        onRunningChanged: if (!running) win.bands = [0, 0, 0]
+    }
+
     readonly property string parsedTitle: {
         if (!player || !player.trackTitle) return ""
         let t = player.trackTitle
@@ -599,6 +620,7 @@ PanelWindow {
             height: 10
             property real phase: 0
             property real amp: win.playing ? 1 : 0
+            property var cur: [0, 0, 0]   // smoothed band levels
             Behavior on amp { NumberAnimation { duration: 450; easing.type: Easing.OutCubic } }
             onAmpChanged: requestPaint()
             onWidthChanged: requestPaint()
@@ -607,7 +629,15 @@ PanelWindow {
             Timer {
                 interval: 40; repeat: true
                 running: win.playing || eq.amp > 0.02
-                onTriggered: { eq.phase += 0.22; eq.requestPaint() }
+                onTriggered: {
+                    eq.phase += 0.22
+                    const b = win.bands
+                    for (let i = 0; i < 3; i++) {
+                        const d = b[i] - eq.cur[i]
+                        eq.cur[i] += d * (d > 0 ? 0.6 : 0.15)   // fast attack, slow release
+                    }
+                    eq.requestPaint()
+                }
             }
 
             onPaint: {
@@ -620,16 +650,17 @@ PanelWindow {
                     { f: 0.110, s: 2.1,  a: 0.50, w: 1.0, al: 0.40 }
                 ]
                 // a slow "beat" so the amplitude breathes instead of being a flat sine
-                const beat = 0.65 + 0.35 * Math.sin(phase * 0.9) * Math.sin(phase * 0.37 + 1)
                 for (let i = 0; i < 3; i++) {
                     const l = L[i]
+                    // line 0 follows bass, line 1 mids, line 2 highs; small floor so it never goes flat while playing
+                    const lvl = 0.12 + 0.88 * Math.min(1, cur[i] * 1.6)
                     ctx.beginPath()
                     ctx.lineWidth = l.w
                     ctx.strokeStyle = cols[i]
                     ctx.globalAlpha = l.al
                     for (let x = 0; x <= width; x += 2) {
                         const env = Math.sin(Math.PI * x / width)
-                        const y = height / 2 + Math.sin(x * l.f + phase * l.s) * amp * beat * l.a * env * (height / 2 - 1.5)
+                        const y = height / 2 + Math.sin(x * l.f + phase * l.s) * amp * lvl * l.a * env * (height / 2 - 1.5)
                         if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
                     }
                     ctx.stroke()
@@ -754,20 +785,26 @@ PanelWindow {
                     }
                 }
 
-                // music: prev / play / next / title (always here)
+                // music: album art + play/pause + title (prev/next live on the music page)
                 Row {
                     spacing: 8
                     anchors.verticalCenter: parent.verticalCenter
-
-                    Text {
+                
+                    // album art thumbnail: only takes space once the player provides an image
+                    Rectangle {
+                        width: 22; height: 22; radius: 5
                         anchors.verticalCenter: parent.verticalCenter
-                        font.family: win.font; font.pixelSize: 11
-                        text: "\uf048"
-                        color: Theme.fg
-                        opacity: win.player ? 1 : 0.35
-                        MouseArea { anchors.fill: parent; anchors.margins: -5
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: if (win.player) win.player.previous() }
+                        visible: art.status === Image.Ready
+                        color: Qt.rgba(1, 1, 1, 0.08)
+                        clip: true
+                        Image {
+                            id: art
+                            anchors.fill: parent
+                            asynchronous: true
+                            fillMode: Image.PreserveAspectCrop
+                            sourceSize: Qt.size(44, 44)   // decode small to save RAM
+                            source: win.player && win.player.trackArtUrl ? win.player.trackArtUrl : ""
+                        }
                     }
                     Rectangle {
                         width: 22; height: 22; radius: 11
@@ -784,16 +821,6 @@ PanelWindow {
                         }
                         MouseArea { id: playArea; anchors.fill: parent
                                     onClicked: if (win.player) win.player.togglePlaying() }
-                    }
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        font.family: win.font; font.pixelSize: 11
-                        text: "\uf051"
-                        color: Theme.fg
-                        opacity: win.player ? 1 : 0.35
-                        MouseArea { anchors.fill: parent; anchors.margins: -5
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: if (win.player) win.player.next() }
                     }
                     // title: tap to grow into the music card
                     Text {
