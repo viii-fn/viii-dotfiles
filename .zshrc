@@ -42,23 +42,18 @@ alias clean-cache='~/.local/bin/clean-caches'
 # Stop with Ctrl+C
 # Shared helper: records to .mkv, then converts to .mp4 when you stop (Ctrl+C)
 # Extra args (like -g "$(slurp)" or --audio) are passed through to wf-recorder
+
 _clip_record() {
-  # Make the trap below local to this function so it doesn't leak into your shell
   setopt localoptions localtraps
 
   mkdir -p ~/Videos/Screenclips
   local base=~/Videos/Screenclips/clip_$(date +%Y-%m-%d_%H-%M-%S)
 
-  # Without this, Ctrl+C would also kill THIS function and the conversion
-  # below would never run. A non-empty trap handler runs in the shell only;
-  # wf-recorder still gets a normal Ctrl+C and stops cleanly.
   trap ':' INT
 
-  wf-recorder -x yuv420p -f "$base.mkv" "$@"
+  wf-recorder -c h264_vaapi -d /dev/dri/renderD128 -p qp=20 -f "$base.mkv" "$@"
 
   echo "Converting to mp4..."
-  # -nostdin: stops ffmpeg from reading your keyboard
-  # &&: only delete the mkv if the conversion succeeded
   ffmpeg -nostdin -loglevel error -i "$base.mkv" \
     -c:v copy -c:a aac -movflags +faststart "$base.mp4" \
     && rm "$base.mkv" \

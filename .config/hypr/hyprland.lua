@@ -428,6 +428,11 @@ hl.window_rule({
     float = true,
     move  = { "12", "10" },
 })
+hl.window_rule({
+    name  = "qs-omnilauncher",
+    match = { title = "^Launcher$" },
+    float = true,
+})
 
 -- Border colors generated from the active palette (silently skipped if the file doesn't exist yet)
 hl.bind("SUPER + L", hl.dsp.exec_cmd("hyprlock"))
