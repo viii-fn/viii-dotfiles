@@ -115,7 +115,7 @@ PanelWindow {
     readonly property real netW: netRow.implicitWidth + 44
     readonly property real listH: topY + 26 + (notifCount > 0 ? Math.min(300, notifList.contentHeight) : 26) + 16
 
-    readonly property real tw: {
+    readonly property real contentW: {
         switch (view) {
         case "osd": return 250
         case "ws": return wsW
@@ -132,6 +132,13 @@ PanelWindow {
         default: return idleW
         }
     }
+    // The sides lean inward going down, so at the bottom the notch is narrower by
+    // `slT` on each side. Expanded views get that much extra width, and the content
+    // sits inside it, so nothing ever touches the slanted edge.
+    function slantFor(h) { return Math.min(36, 9 + h * 0.06) }
+    readonly property bool expanded: ["card","list","music","lyrics","quick","screentime","weather","launcher"].indexOf(view) >= 0
+    readonly property real slT: slantFor(th)
+    readonly property real tw: contentW + (expanded ? 2 * slT : 0)
     readonly property real th: {
         switch (view) {
         case "osd": return 58
@@ -524,8 +531,8 @@ PanelWindow {
 
         // Geometry: wide at the top, sides slant inward, bottom corners softly rounded.
         // The slant grows with the height so a tall notch leans a little more.
-        readonly property real sl: Math.min(22, 8 + height * 0.06)
-        readonly property real rr: Math.min(18, height * 0.38)
+        readonly property real sl: win.slantFor(height)
+        readonly property real rr: Math.min(22, height * 0.38)
         readonly property real len: Math.sqrt(sl * sl + height * height)
         readonly property real rx1: width - sl + sl / len * rr
         readonly property real ry1: height - height / len * rr
@@ -836,8 +843,9 @@ PanelWindow {
             IslandNotif {
                 id: popupCard
                 visible: win.view === "card" && win.popup !== null
-                x: 12; y: 16
-                width: win.tw - 24
+                y: 16
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 366
                 notif: win.popup
             }
 
@@ -1001,8 +1009,9 @@ PanelWindow {
 
             // Notification list: latest first
             Item {
-                x: 14; y: win.topY
-                width: win.tw - 28
+                y: win.topY
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 362
                 height: win.th - win.topY
                 visible: win.page === "list"
 
@@ -1056,9 +1065,9 @@ PanelWindow {
             // Every other page is its own file, created only while it is open
             Loader {
                 id: pageLoader
-                x: 0; y: win.topY
-                width: win.tw
-                height: win.th - win.topY
+                x: win.slT; y: win.topY
+                width: win.contentW
+                height: win.th - win.topY - 8
                 readonly property string wantFile: win.pageFiles[win.page] || ""
                 active: wantFile !== ""
                 // setSource hands `n` over BEFORE the page's Component.onCompleted runs
